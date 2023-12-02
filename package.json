@@ -1,0 +1,21 @@
+{
+  "name": "chess-auto",
+  "version": "1.0.0",
+  "description": "chess automation",
+  "main": "main.js",
+  "scripts": {
+    "start": "ts-node -r tsconfig-paths/register src/main.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "zukarusan",
+  "license": "ISC",
+  "devDependencies": {
+    "ts-node": "^10.9.1",
+    "typescript": "^5.3.2",
+    "tsconfig-paths": "^4.0.0"
+  },
+  "dependencies": {
+    "@types/puppeteer": "^7.0.4",
+    "puppeteer": "^21.5.2"
+  }
+}
