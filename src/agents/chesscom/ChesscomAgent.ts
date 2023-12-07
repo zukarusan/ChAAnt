@@ -33,7 +33,7 @@ class ChesscomAgent implements ChessAgentInterface {
             if (playBtn == null) {
                 throw "Version update needed";
             }
-            playBtn.click();
+            await playBtn.click();
         } catch (error: unknown) {
             return Promise.resolve(AgentState.BrowserPageOutOfReach);
         }
