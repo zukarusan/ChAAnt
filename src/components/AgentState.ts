@@ -4,5 +4,6 @@ export enum AgentState {
     FirstWaitingTurn,
     TakingTurn,
     Idle,
-    IdleIllegalPlay
+    IdleIllegalPlay,
+    BrowserPageOutOfReach
 }
