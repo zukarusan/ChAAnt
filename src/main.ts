@@ -7,7 +7,9 @@ import * as puppeteer from "puppeteer";
 const initBrowser = async () => {
   const browser = await puppeteer.launch({
     headless: false,
-    slowMo: 50
+    slowMo: 1,
+    defaultViewport: null,
+    args: ['--start-maximized'] 
   });
   var test: ChessAgentInterface; 
   return browser;
@@ -30,7 +32,12 @@ const initBrowser = async () => {
   }
   let bot = mediumBot as ChesscomComputerOpt;
   const browser = await initBrowser();
-  let agent = new ChesscomAgent((await browser.pages())[0]);
+  const page = (await browser.pages())[0];
+  let jendela = await page.evaluate(()=> document.defaultView);
+  if (jendela != null) {
+    await page.setViewport({width: jendela.innerWidth, height: jendela.innerHeight});
+  }
+  let agent = new ChesscomAgent(page);
   console.log(`Playing against ${bot.name}, rating: ${bot.elo}`);
   let state = await agent.playComputer(bot);
   if (state == AgentState.BrowserPageOutOfReach) {

@@ -74,7 +74,25 @@ export class ChesscomComputerOpt implements ComputerOptInterface {
         if (chooseBtn == null) {
             throw "There is no choose button";
         }
-        chooseBtn.click();
+        await chooseBtn.click();
+        
+        await page.evaluate(() => {
+            return new Promise<void>((resolve)=>{
+                let node = document.querySelector("#board-layout-sidebar div.selection-menu-component");
+                var x = new MutationObserver(function (mut, ob) {
+                    debugger;
+                    if (mut[0].attributeName == "class" && document.querySelector("div.selection-menu-component") == null) {
+                        resolve();
+                        ob.disconnect();
+                    } 
+                });
+                if (node != null) {
+                    x.observe(node , { attributes: true });
+                } else {
+                    resolve();
+                }
+            });
+        });
         if ((await page.$("#board-layout-sidebar div.selection-menu-component")) == null) {
             return Promise.resolve(ComputerConfigState.Chosen);
 
