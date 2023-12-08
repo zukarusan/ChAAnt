@@ -29,6 +29,10 @@ export class ChesscomAgent implements ChessAgentInterface {
     async playComputer(computer: ComputerOptInterface): Promise<AgentState> {
         try {
             await this.page.goto("https://www.chess.com/play/computer");
+            (await this.page.$("div[id^='placeholder-'] button[aria-label='Close']"))?.click();
+            if (await this.page.$("#board-layout-sidebar div.bot-selection-scroll") == null) {
+                throw "Version update needed";
+            }
             let configState = await computer.selectMe(this.page);
             if (configState != ComputerConfigState.Chosen) {
                 throw "Version update needed";
