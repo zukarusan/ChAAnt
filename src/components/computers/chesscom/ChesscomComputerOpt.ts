@@ -1,6 +1,6 @@
 import { ComputerConfigState } from "@components/ComputerConfigState";
 import { ComputerOptInterface } from "../ComputerOptInterface";
-import puppeteer from "puppeteer";
+import puppeteer, { Page } from "puppeteer";
 
 export class ChesscomComputerOpt implements ComputerOptInterface {
     private static readonly computerConfigs: ChesscomComputerOpt[] = new Array<ChesscomComputerOpt>();
@@ -37,7 +37,7 @@ export class ChesscomComputerOpt implements ComputerOptInterface {
             await browser.close();
             bots.forEach((bot)=> {
                 if (!bot.is_premium) {
-                    this.computerConfigs.push(new ChesscomComputerOpt(bot.username, bot.rating, bot.classification));
+                    ChesscomComputerOpt.computerConfigs.push(new ChesscomComputerOpt(bot.username, bot.rating, bot.classification));
                 }
             });
             resolve(true);
@@ -46,28 +46,47 @@ export class ChesscomComputerOpt implements ComputerOptInterface {
         }
     }
     public static async getAvailableBots(): Promise<Array<ChesscomComputerOpt>>{
-        if (!(await this.initialized)) {
+        if (!(await ChesscomComputerOpt.initialized)) {
             throw "Bots are not available";
         }
-        return Promise.resolve(this.computerConfigs);
+        return Promise.resolve(ChesscomComputerOpt.computerConfigs);
     }
     get name(): string {
-        throw new Error("Method not implemented.");
+        return this._name;
     }
     get elo(): number {
-        throw new Error("Method not implemented.");
+        return this._elo;
     }
-    async selectMe(): Promise<ComputerConfigState> {
+    async selectMe(page: Page): Promise<ComputerConfigState> {
         let init = await ChesscomComputerOpt.initialized;
         if (!init) {
             throw "Cannot select because no bots are available";
         }
+        if (!page.url().includes("chess.com/play/computer")) {
+            throw "Page is not within computer mode";
+        }
+        let botBtn = await page.$(`div[data-cy='${this._name}'][data-bot-classification='${this._group}']`);
+        if (botBtn == null) {
+            throw `Bot ${this._name} is not found`;
+        }
+        await botBtn.click();
+        let chooseBtn = await page.$("#board-layout-sidebar button[title='Choose']");
+        if (chooseBtn == null) {
+            throw "There is no choose button";
+        }
+        chooseBtn.click();
+        if ((await page.$("#board-layout-sidebar div.selection-menu-component")) == null) {
+            return Promise.resolve(ComputerConfigState.Chosen);
 
-
-        return Promise.resolve(ComputerConfigState.Chosen);
+        } else {
+            return Promise.resolve(ComputerConfigState.OutOfReach);
+        }
     }
-    configure(...args: any): Promise<ComputerConfigState> {
-        throw new Error("Method not implemented.");
+    async configure(page: Page, ...args: any): Promise<ComputerConfigState> {
+        if ((await page.$("#board-layout-sidebar div.selection-component")) == null) {
+            throw "Bot is not yet chosen";
+        }
+        return Promise.resolve(ComputerConfigState.ChosenConfigured);
     }
 
 }
@@ -98,12 +117,12 @@ export interface ChesscomBot {
   image_url: string
   crown_earned: any
   image_url_override: any
-  phrase_list: PhraseList
+  phrase_list: ChesscomBotPhraseList
   is_v2: boolean
   theme_id: any
   minimum_ceeversion: any
 }
-export interface PhraseList {
+export interface ChesscomBotPhraseList {
     greeting: string
     computer_wins: string
     computer_loses: string

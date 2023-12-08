@@ -1,4 +1,6 @@
 import { ChessAgentInterface } from "@agents/ChessAgentInterface";
+import { ChesscomAgent } from "@agents/chesscom/ChesscomAgent";
+import { AgentState } from "@components/AgentState";
 import { ChesscomComputerOpt } from "@components/computers/chesscom/ChesscomComputerOpt";
 import * as puppeteer from "puppeteer";
 
@@ -14,6 +16,25 @@ const initBrowser = async () => {
 
 
 (async () => {
-  console.info((await ChesscomComputerOpt.getAvailableBots()));
-//   await browser.close();
+  let bots = await ChesscomComputerOpt.getAvailableBots();
+  let mediumBot: ChesscomComputerOpt | null = null;
+  bots.every(b => {
+    if (b.elo >= 1600 ) {
+      mediumBot = b;
+      return false;
+    }
+    return true;
+  });
+  if (mediumBot == null) {
+    return Promise.reject("No available medium bot");
+  }
+  let bot = mediumBot as ChesscomComputerOpt;
+  const browser = await initBrowser();
+  let agent = new ChesscomAgent((await browser.pages())[0]);
+  console.log(`Playing against ${bot.name}, rating: ${bot.elo}`);
+  let state = await agent.playComputer(bot);
+  if (state == AgentState.BrowserPageOutOfReach) {
+    browser.close();
+    console.error("Browser out of reach");
+  }
 })();

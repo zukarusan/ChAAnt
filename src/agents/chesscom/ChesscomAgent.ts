@@ -5,7 +5,7 @@ import { Square } from "@components/Square";
 import { ComputerOptInterface } from "@components/computers/ComputerOptInterface";
 import { ElementHandle, Page } from "puppeteer";
 
-class ChesscomAgent implements ChessAgentInterface {
+export class ChesscomAgent implements ChessAgentInterface {
     private static UNIQUE_PAGES: Set<Page> = new Set<Page>();
     private page: Page;
     private state: AgentState;
@@ -29,13 +29,13 @@ class ChesscomAgent implements ChessAgentInterface {
     async playComputer(computer: ComputerOptInterface): Promise<AgentState> {
         try {
             await this.page.goto("https://www.chess.com/play/computer");
-            let configState = await computer.selectMe();
+            let configState = await computer.selectMe(this.page);
             if (configState != ComputerConfigState.Chosen) {
                 throw "Version update needed";
             }
             let playBtn = await this.page.$("#board-layout-sidebar button[title='Play']");
             if (playBtn == null) {
-                throw "Version update needed";
+                throw "No play button detected";
             }
             await playBtn.click();
 
