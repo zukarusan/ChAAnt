@@ -1,4 +1,5 @@
 import { ChessAgentInterface } from "@agents/ChessAgentInterface";
+import { ChesscomComputerOpt } from "@components/computers/chesscom/ChesscomComputerOpt";
 import * as puppeteer from "puppeteer";
 
 const initBrowser = async () => {
@@ -13,8 +14,6 @@ const initBrowser = async () => {
 
 
 (async () => {
-  const browser = await initBrowser();
-  const page = await browser.newPage();
-  
+  console.info((await ChesscomComputerOpt.getAvailableBots()));
 //   await browser.close();
 })();
