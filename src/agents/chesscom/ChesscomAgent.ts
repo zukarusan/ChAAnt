@@ -1,5 +1,6 @@
 import { ChessAgentInterface } from "@agents/ChessAgentInterface";
 import { AgentState } from "@components/AgentState";
+import { ComputerConfigState } from "@components/ComputerConfigState";
 import { Square } from "@components/Square";
 import { ComputerOptInterface } from "@components/computers/ComputerOptInterface";
 import { ElementHandle, Page } from "puppeteer";
@@ -28,12 +29,16 @@ class ChesscomAgent implements ChessAgentInterface {
     async playComputer(computer: ComputerOptInterface): Promise<AgentState> {
         try {
             await this.page.goto("https://www.chess.com/play/computer");
-            await computer.selectMe();
+            let configState = await computer.selectMe();
+            if (configState != ComputerConfigState.Chosen) {
+                throw "Version update needed";
+            }
             let playBtn = await this.page.$("#board-layout-sidebar button[title='Play']");
             if (playBtn == null) {
                 throw "Version update needed";
             }
             await playBtn.click();
+
         } catch (error: unknown) {
             return Promise.resolve(AgentState.BrowserPageOutOfReach);
         }

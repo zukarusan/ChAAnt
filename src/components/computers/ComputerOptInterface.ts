@@ -1,7 +1,9 @@
+import { ComputerConfigState } from "@components/ComputerConfigState";
+
 export interface ComputerOptInterface {
     get name(): string;
     get elo(): number;
 
-    selectMe(): Promise<Enumerator>;
-    configure(...args: any): Promise<Enumerator>;
+    selectMe(): Promise<ComputerConfigState>;
+    configure(...args: any): Promise<ComputerConfigState>;
 }
