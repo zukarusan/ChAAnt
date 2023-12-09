@@ -31,15 +31,20 @@ export class ChesscomAgent implements ChessAgentInterface {
         } else {
             rankIdx = ChesscomAgent.reverseClientBoardIndexing(rankIdx);
         }
-        let rect = await board.evaluate((board) => board.getClientRects()[0], board);
-        let pieceSample = await board.evaluate((board) => board.querySelector(".piece"), board);
-        if (pieceSample == null) {
-            return Promise.reject(`Cannot find targeted piece: ${square.notation}`);
+        try {
+            return Promise.resolve(await board.evaluate((board, fileIdx, rankIdx) : [number, number] => {
+                let rect = board.getClientRects()[0];
+                let pieceSample = board.querySelector(".piece");
+                if (pieceSample == null) {
+                    throw `Cannot find targeted piece: ${square.notation}`;
+                }
+                let squareLength = pieceSample.clientWidth;
+                let half = squareLength / 2;
+                return [rect.x+(squareLength * fileIdx) - half, rect.y+(squareLength * rankIdx) - half];
+            }, fileIdx, rankIdx));
+        } catch (err: any) {
+            return Promise.reject(err);
         }
-        let squareLength = pieceSample.clientWidth;
-        let half = squareLength / 2;
-        
-        return Promise.resolve([rect.x+(squareLength * fileIdx) - half, rect.y+(squareLength * rankIdx) - half]);
     }
     async move(from: Square, to: Square): Promise<AgentState> {
         try {
