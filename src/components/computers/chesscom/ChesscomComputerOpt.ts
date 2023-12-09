@@ -76,28 +76,24 @@ export class ChesscomComputerOpt implements ComputerOptInterface {
         }
         await chooseBtn.click();
         
-        await page.evaluate(() => {
-            return new Promise<void>((resolve)=>{
-                let node = document.querySelector("#board-layout-sidebar div.selection-menu-component");
-                var x = new MutationObserver(function (mut, ob) {
-                    debugger;
-                    if (mut[0].attributeName == "class" && document.querySelector("div.selection-menu-component") == null) {
-                        resolve();
-                        ob.disconnect();
-                    } 
-                });
-                if (node != null) {
-                    x.observe(node , { attributes: true });
-                } else {
+        await page.evaluate(() => new Promise<void>((resolve)=>{
+            let node = document.querySelector("#board-layout-sidebar div.selection-menu-component");
+            var x = new MutationObserver(function (mut, ob) {
+                if (mut[0].attributeName == "class" && document.querySelector("div.selection-menu-component") == null) {
                     resolve();
-                }
+                    ob.disconnect();
+                } 
             });
-        });
+            if (node != null) {
+                x.observe(node , { attributes: true });
+            } else {
+                resolve();
+            }
+        }));
         if ((await page.$("#board-layout-sidebar div.selection-menu-component")) == null) {
             return Promise.resolve(ComputerConfigState.Chosen);
-
         } else {
-            return Promise.resolve(ComputerConfigState.OutOfReach);
+            return Promise.reject(ComputerConfigState.ConfigOutOfReach);
         }
     }
     async configure(page: Page, ...args: any): Promise<ComputerConfigState> {

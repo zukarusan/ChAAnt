@@ -1,6 +1,6 @@
 export enum ComputerConfigState {
-    Chosen,
-    ChosenConfigured,
-    Selecting,
-    OutOfReach
+    Chosen = "Chosen",
+    ChosenConfigured = "ChosenConfigured",
+    Selecting = "Selecting",
+    ConfigOutOfReach = "ConfigOutOfReach"
 }

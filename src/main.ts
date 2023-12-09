@@ -39,9 +39,14 @@ const initBrowser = async () => {
   }
   let agent = new ChesscomAgent(page);
   console.log(`Playing against ${bot.name}, rating: ${bot.elo}`);
-  let state = await agent.playComputer(bot);
-  if (state == AgentState.BrowserPageOutOfReach) {
-    browser.close();
-    console.error("Browser out of reach");
+  try {
+    let state = await agent.playComputer(bot);
+  } catch (err: unknown) {
+    if (err instanceof Array) {
+      let state = err[1] as AgentState;
+      browser.close();
+      console.error(`Browser out of reach: ${AgentState[state]}`);
+      console.error("Error cause: ", err[0]);
+    }
   }
 })();
