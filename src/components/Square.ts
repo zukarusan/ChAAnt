@@ -48,7 +48,7 @@ export class Square {
         return this._rank;
     }
     public get file(): number {
-        return this._rank;
+        return this._file;
     }
     public get rankNotation(): string {
         return (this._rank + 1).toString();

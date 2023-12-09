@@ -21,18 +21,16 @@ export class ChesscomAgent implements ChessAgentInterface {
         ChesscomAgent.UNIQUE_PAGES.add(page);
     }
     
-    private static reverseClientBoardIndexing(fileOrRankIndex: number): number {
-        return 8 - fileOrRankIndex + 1;
-    }
     private static async resolveBoardSquare(board: ElementHandle, square: Square, asBlack = false): Promise<[number, number]> {
-        let fileIdx = square.file, rankIdx = square.rank;
+        let fileIdx = square.file + 1, rankIdx = square.rank + 1;
         if (asBlack) {
-            fileIdx = ChesscomAgent.reverseClientBoardIndexing(fileIdx);
+            fileIdx = 8 - fileIdx + 1;
         } else {
-            rankIdx = ChesscomAgent.reverseClientBoardIndexing(rankIdx);
+            rankIdx = 8 - rankIdx + 1;
         }
         try {
             return Promise.resolve(await board.evaluate((board, fileIdx, rankIdx) : [number, number] => {
+                debugger;
                 let rect = board.getClientRects()[0];
                 let pieceSample = board.querySelector(".piece");
                 if (pieceSample == null) {
