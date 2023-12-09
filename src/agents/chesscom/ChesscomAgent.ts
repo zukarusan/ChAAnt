@@ -1,6 +1,7 @@
 import { ChessAgentInterface } from "@agents/ChessAgentInterface";
 import { AgentState } from "@components/AgentState";
 import { ComputerConfigState } from "@components/ComputerConfigState";
+import { PlayState } from "@components/PlayState";
 import { Square } from "@components/Square";
 import { ComputerOptInterface } from "@components/computers/ComputerOptInterface";
 import { ElementHandle, Page } from "puppeteer";
@@ -9,22 +10,75 @@ export class ChesscomAgent implements ChessAgentInterface {
     private static UNIQUE_PAGES: Set<Page> = new Set<Page>();
     private page: Page;
     private state: AgentState;
+    private playing: PlayState;
     public constructor(page: Page) {
         if (ChesscomAgent.UNIQUE_PAGES.has(page)) {
             throw "Another Chess.com agent has already attached this page";
         }
         this.page = page;
         this.state = AgentState.Idle;
+        this.playing = PlayState.NotPlaying;
         ChesscomAgent.UNIQUE_PAGES.add(page);
     }
+    
+    private static reverseClientBoardIndexing(fileOrRankIndex: number): number {
+        return 8 - fileOrRankIndex + 1;
+    }
+    private static async resolveBoardSquare(board: ElementHandle, square: Square, asBlack = false): Promise<[number, number]> {
+        let fileIdx = square.file, rankIdx = square.rank;
+        if (asBlack) {
+            fileIdx = ChesscomAgent.reverseClientBoardIndexing(fileIdx);
+        } else {
+            rankIdx = ChesscomAgent.reverseClientBoardIndexing(rankIdx);
+        }
+        let rect = await board.evaluate((board) => board.getClientRects()[0], board);
+        let pieceSample = await board.evaluate((board) => board.querySelector(".piece"), board);
+        if (pieceSample == null) {
+            return Promise.reject(`Cannot find targeted piece: ${square.notation}`);
+        }
+        let squareLength = pieceSample.clientWidth;
+        let half = squareLength / 2;
+        
+        return Promise.resolve([rect.x+(squareLength * fileIdx) - half, rect.y+(squareLength * rankIdx) - half]);
+    }
     async move(from: Square, to: Square): Promise<AgentState> {
-        throw new Error("Method not implemented.");
+        try {
+            let board: ElementHandle<Element> | null = null; 
+            if (this.playing == PlayState.AgainstComputer) {
+                board = await this.page.$('#board-play-computer');
+            }
+            if (board == null) {
+                throw "Board not found";
+            }
+            let bgSqr = await ChesscomAgent.resolveBoardSquare(board, from, false); // TODO handle black/white state
+            let enSqr = await ChesscomAgent.resolveBoardSquare(board, to, false);
+            await this.page.evaluate((board, bgSqr, enSqr) => new Promise<void>((resolve, reject)=>{
+                let timeoutId = setTimeout(() => {
+                    throw "Agent making a move times out";
+                }, 5200);
+                let dragbegin = new PointerEvent('pointerdown', { clientX: bgSqr[0], clientY: bgSqr[1], bubbles:true});
+                let dragend = new PointerEvent('pointerup', { clientX: enSqr[0], clientY: enSqr[1], bubbles:true});
+                board.dispatchEvent(dragbegin);
+                board.dispatchEvent(dragend);
+
+                // TODO handle waiting turn and make sure move is taken
+
+                clearTimeout(timeoutId);
+                resolve();
+            }), board, bgSqr, enSqr);
+        } catch (err: any) {
+            return Promise.reject([err, (this.state = AgentState.MovedIllegal)] as [any, AgentState]); // TODO handle better illegal move
+        }
+        return Promise.resolve((this.state = AgentState.MovedWaitingTurn))
     }
     async waitTurn(): Promise<AgentState> {
         throw new Error("Method not implemented.");
     }
-    async status(): Promise<AgentState> {
-        throw new Error("Method not implemented.");
+    get status(): Promise<AgentState> {
+        return Promise.resolve(this.state);
+    }
+    get playingState(): Promise<PlayState> {
+        return Promise.resolve(this.playing);
     }
     async playComputer(computer: ComputerOptInterface): Promise<AgentState> {
         try {
@@ -95,6 +149,7 @@ export class ChesscomAgent implements ChessAgentInterface {
         } catch (error: unknown) {
             return Promise.reject(([error, (this.state = AgentState.BrowserPageOutOfReach)] as [unknown, AgentState]));
         }
+        this.playing = PlayState.AgainstComputer;
         return Promise.resolve((this.state = AgentState.TakingTurn));
     }
     async playRapid(...args: any): Promise<AgentState> {
