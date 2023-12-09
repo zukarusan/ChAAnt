@@ -77,9 +77,13 @@ export class ChesscomComputerOpt implements ComputerOptInterface {
         await chooseBtn.click();
         
         await page.evaluate(() => new Promise<void>((resolve)=>{
+            let timeoutId = setTimeout(() => {
+                throw "Asserting bot selection times out";
+            }, 10200);
             let node = document.querySelector("#board-layout-sidebar div.selection-menu-component");
             var x = new MutationObserver(function (mut, ob) {
                 if (mut[0].attributeName == "class" && document.querySelector("div.selection-menu-component") == null) {
+                    clearTimeout(timeoutId);
                     resolve();
                     ob.disconnect();
                 } 
@@ -87,6 +91,7 @@ export class ChesscomComputerOpt implements ComputerOptInterface {
             if (node != null) {
                 x.observe(node , { attributes: true });
             } else {
+                clearTimeout(timeoutId);
                 resolve();
             }
         }));

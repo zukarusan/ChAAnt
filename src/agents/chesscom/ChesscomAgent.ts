@@ -34,8 +34,12 @@ export class ChesscomAgent implements ChessAgentInterface {
                 await btn?.click();
             });
             await this.page.evaluate(() => new Promise<void>((resolve)=>{
+                let timeoutId = setTimeout(() => {
+                    throw "Asserting modal popup times out";
+                }, 10200);
                 var x = new MutationObserver(function (mut, ob) {
                     if (mut[0].removedNodes) {
+                        clearTimeout(timeoutId);
                         resolve();
                         ob.disconnect();
                     }
@@ -44,6 +48,7 @@ export class ChesscomAgent implements ChessAgentInterface {
                 if (node != null) {
                     x.observe(node , { childList: true });
                 } else {
+                    clearTimeout(timeoutId);
                     resolve();
                 }
             }));
@@ -59,8 +64,12 @@ export class ChesscomAgent implements ChessAgentInterface {
             }
             
             await this.page.evaluate(() => new Promise<void>((resolve)=>{
+                let timeoutId = setTimeout(() => {
+                    throw "Finding play button times out";
+                }, 10200);
                 var x = new MutationObserver(function (_mut, ob) {
                     if (document.querySelector("#board-layout-sidebar button[title='Play']")) {
+                        clearTimeout(timeoutId);
                         resolve();
                         ob.disconnect();
                     }
@@ -74,6 +83,7 @@ export class ChesscomAgent implements ChessAgentInterface {
                         throw "Play button not found";
                     }
                 } else {
+                    clearTimeout(timeoutId);
                     resolve();
                 }
             }));
@@ -95,10 +105,5 @@ export class ChesscomAgent implements ChessAgentInterface {
     }
     async playBullet(...args: any): Promise<AgentState> {
         throw new Error("Method not implemented.");
-    }
-    private checkElement(el: ElementHandle | Element) {
-        if (el == null) {
-            
-        }
     }
 } 
