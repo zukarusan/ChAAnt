@@ -62,7 +62,7 @@ const askTurn = async (agent: ChessAgentInterface) => {
 		return true;
 	});
 	if (mediumBot == null) {
-		return Promise.reject("No available medium bot");
+		throw "No available medium bot";
 	}
 	let bot = mediumBot as ChesscomComputerOpt;
 	const browser = await initBrowser();
@@ -78,7 +78,7 @@ const askTurn = async (agent: ChessAgentInterface) => {
 		if (state == AgentState.TakingTurn) {
 			await askTurn(agent);
 		}
-	} catch (err: unknown) {
+	} catch (err: any) {
 		if (err instanceof Array) {
 			let state = err[1] as AgentState;
 			browser.close();

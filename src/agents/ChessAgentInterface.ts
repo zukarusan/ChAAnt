@@ -6,9 +6,9 @@ import { ComputerOptInterface } from "@components/computers/ComputerOptInterface
 export interface ChessAgentInterface {
     move(from: Square, to: Square): Promise<AgentState>;
     waitTurn(): Promise<AgentState>;
-    get status(): Promise<AgentState>;
-    get playingState(): Promise<PlayState>;
-    get blackOrWhite(): Promise<"black" | "white">;
+    get status(): AgentState;
+    get playingState(): PlayState;
+    get blackOrWhite(): "black" | "white";
     
     playComputer(computer: ComputerOptInterface): Promise<AgentState>;
     playRapid(...args: any): Promise<AgentState>;

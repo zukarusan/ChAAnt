@@ -49,7 +49,7 @@ export class ChesscomComputerOpt implements ComputerOptInterface {
         if (!(await ChesscomComputerOpt.initialized)) {
             throw "Bots are not available";
         }
-        return Promise.resolve(ChesscomComputerOpt.computerConfigs);
+        return ChesscomComputerOpt.computerConfigs;
     }
     get name(): string {
         return this._name;
@@ -100,16 +100,16 @@ export class ChesscomComputerOpt implements ComputerOptInterface {
         let menu = await page.$("#board-layout-sidebar div.selection-menu-component");
         await menu?.dispose();
         if (null == menu) {
-            return Promise.resolve(ComputerConfigState.Chosen);
+            return ComputerConfigState.Chosen;
         } else {
-            return Promise.reject(ComputerConfigState.ConfigOutOfReach);
+            throw ComputerConfigState.ConfigOutOfReach;
         }
     }
     async configure(page: Page, ...args: any): Promise<ComputerConfigState> {
         if ((await page.$("#board-layout-sidebar div.selection-component")) == null) {
             throw "Bot is not yet chosen";
         }
-        return Promise.resolve(ComputerConfigState.ChosenConfigured);
+        return ComputerConfigState.ChosenConfigured;
     }
 
 }
