@@ -4,9 +4,13 @@ import { ComputerConfigState } from "@components/ComputerConfigState";
 import { PlayState } from "@components/PlayState";
 import { Square } from "@components/Square";
 import { ComputerOptInterface } from "@components/computers/ComputerOptInterface";
-import { State } from "@misc/chesscom/ChesscomGame";
+import { ResolveType } from "@misc/Util";
+import { Board, State } from "@misc/chesscom/ChesscomGame";
 import { ElementHandle, Page } from "puppeteer";
 
+declare global {
+    var chesscom_translations: any;
+}
 export class ChesscomAgent implements ChessAgentInterface {
     private static UNIQUE_PAGES: Set<Page> = new Set<Page>();
     private page: Page;
@@ -114,46 +118,64 @@ export class ChesscomAgent implements ChessAgentInterface {
             await board.dispose();
         }
     }
-    private async ensurePlaying(): Promise<void> {
+    private async executeOnBoardElem<T>(promise: (board: Element | Board, ...args: any) => T, ...evalArgs: any): Promise<T> {
         let board: ElementHandle<Element> | null = null;
         try {
             board = await this.page.$("wc-chess-board");
             if (null == board) {
                 throw "Board not found";
             }
-
-            let playing = await board.evaluate(async (board: Element | any) => {
-                await new Promise<void>((resolve, reject) => {
-                    let timeoutId = setTimeout(() => {
-                        reject("Playing cannot be ensured: timed out");
-                    }, 10200);
-                    var observer = new MutationObserver(function (mut, ob) {
-                        if (mut.filter((m)=>m.addedNodes).length > 0 && document.querySelector("#board-layout-sidebar button.resign-button-component")) {    
-                            ob.disconnect();
-                            resolve();
-                        }
-                    });
-                    let node = document.querySelector("#board-layout-sidebar button.resign-button-component");
-                    if (node == null) {
-                        let panel = document.querySelector("#board-layout-sidebar") ?? reject("Board not found");
-                        observer.observe(panel!, { childList: true });
-                    } else {
-                        resolve();
-                        clearTimeout(timeoutId);
-                    }
-                });
-                let state = board.state;
-                return state.playingAs !== undefined && state.playingAs != null && !state.isGameOver;
-            });
-            if (!playing) {
+            return await board.evaluate(promise, evalArgs);
+        } catch (err) {
+            this.state = AgentState.BrowserPageOutOfReach;
+            throw err;
+        } finally {
+            await board?.dispose();
+        }
+    }
+    private async isPlaying(): Promise<boolean> {
+        return await this.executeOnBoardElem(ChesscomAgent.evalPlaying);
+    }
+    private static async evalPlaying(board: ElementHandle<Element> | any): Promise<boolean> {
+        const checkObserve = (resolve: ResolveType<void>, mut: MutationRecord[], timeoutId: NodeJS.Timeout, ob: MutationObserver) => {
+            if (mut.filter((m)=>m.addedNodes).length > 0 && document.querySelector("#board-layout-sidebar button.resign-button-component")) {    
+                clearTimeout(timeoutId);
+                ob.disconnect();
+                resolve();
+            }
+        }
+        await new Promise<void>((resolve, reject) => {
+            let timeoutId = setTimeout(() => {
+                reject("Playing cannot be ensured: timed out");
+            }, 10200);
+            var observer = new MutationObserver((mut,ob)=>checkObserve(resolve, mut, timeoutId, ob));
+            let node = document.querySelector("#board-layout-sidebar button.resign-button-component");
+            node = node ?? ((): Element => {
+                debugger;
+                let resignLabel: string = (chesscom_translations.messages)["Resign"] as string ?? "Resign";
+                return document.querySelector(`#board-layout-sidebar button[aria-label='${resignLabel}']`) ?? reject("Resign button not found")!;
+            })();
+            if (node == null) {
+                let panel = document.querySelector("#board-layout-sidebar") ?? reject("Board not found");
+                observer.observe(panel!, { childList: true });
+            } else {
+                resolve();
+                clearTimeout(timeoutId);
+            }
+        });
+        debugger;
+        let state = board.state;
+        return state.playingAs !== undefined && !state.isGameOver;
+    }
+    private async ensurePlaying(): Promise<void> {
+        try {
+            if (!await this.isPlaying()) {
                 this.state = AgentState.IdleIllegalPlay;
                 throw "Agent is not detected to be playing";
             }
         } catch (err) {
             this.state = AgentState.BrowserPageOutOfReach;
             throw err;
-        } finally {
-            await board?.dispose();
         }
     }
     async playComputer(computer: ComputerOptInterface): Promise<AgentState> {
