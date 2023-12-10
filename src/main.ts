@@ -13,7 +13,6 @@ const initBrowser = async () => {
 		defaultViewport: null,
 		args: ['--start-maximized']
 	});
-	var test: ChessAgentInterface;
 	return browser;
 };
 const rlconsole = readline.createInterface({

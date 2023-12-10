@@ -8,10 +8,11 @@ export interface ChessAgentInterface {
     waitTurn(): Promise<AgentState>;
     get status(): Promise<AgentState>;
     get playingState(): Promise<PlayState>;
+    get blackOrWhite(): Promise<"black" | "white">;
     
     playComputer(computer: ComputerOptInterface): Promise<AgentState>;
     playRapid(...args: any): Promise<AgentState>;
     playBlitz(...args: any): Promise<AgentState>;
     playBullet(...args: any): Promise<AgentState>;
-    
+    playClassical(...args: any): Promise<AgentState>;
 }

@@ -70,12 +70,14 @@ export class ChesscomComputerOpt implements ComputerOptInterface {
             throw `Bot ${this._name} is not found`;
         }
         await botBtn.click();
+        await botBtn.dispose();
         let chooseBtn = await page.$("#board-layout-sidebar button[title='Choose']");
         if (chooseBtn == null) {
             throw "There is no choose button";
         }
         await chooseBtn.click();
-        
+        await chooseBtn.dispose();
+
         await page.evaluate(() => new Promise<void>((resolve)=>{
             let timeoutId = setTimeout(() => {
                 throw "Asserting bot selection times out";
@@ -95,7 +97,9 @@ export class ChesscomComputerOpt implements ComputerOptInterface {
                 resolve();
             }
         }));
-        if ((await page.$("#board-layout-sidebar div.selection-menu-component")) == null) {
+        let menu = await page.$("#board-layout-sidebar div.selection-menu-component");
+        await menu?.dispose();
+        if (null == menu) {
             return Promise.resolve(ComputerConfigState.Chosen);
         } else {
             return Promise.reject(ComputerConfigState.ConfigOutOfReach);
