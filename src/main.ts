@@ -9,7 +9,6 @@ import * as readline from 'readline';
 const initBrowser = async () => {
 	const browser = await puppeteer.launch({
 		headless: false,
-		slowMo: 1,
 		defaultViewport: null,
 		args: ['--start-maximized']
 	});

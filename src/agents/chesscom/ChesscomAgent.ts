@@ -102,21 +102,9 @@ export class ChesscomAgent implements ChessAgentInterface {
         return this.asBlack ? "black" : "white";
     }
     private async evaluateBlackOrWhite(): Promise<void> {
-        let board = await this.page.$("wc-chess-board");
-        if (null == board) {
-            this.state = AgentState.BrowserPageOutOfReach;
-            throw "Board not found";
-        }
-        try {
-            this.asBlack = await board.evaluate((board: Element | any) => {
-                return 2 == (board.state.playingAs as number);
-            });
-        } catch (err) {
-            this.state = AgentState.BrowserPageOutOfReach;
-            throw `Cannot determine whether playing as black or white. Reason: ${err}`;
-        } finally {
-            await board.dispose();
-        }
+        this.asBlack = await this.executeOnBoardElem((board: Element | any) => {
+            return 2 == (board.state.playingAs as number);
+        });
     }
     private async executeOnBoardElem<T>(promise: (board: Element | Board, ...args: any) => T, ...evalArgs: any): Promise<T> {
         let board: ElementHandle<Element> | null = null;
@@ -137,8 +125,9 @@ export class ChesscomAgent implements ChessAgentInterface {
         return await this.executeOnBoardElem(ChesscomAgent.evalPlaying);
     }
     private static async evalPlaying(board: ElementHandle<Element> | any): Promise<boolean> {
+        const resignLabel: string = (chesscom_translations.messages)["Resign"] as string ?? "Resign";
         const checkObserve = (resolve: ResolveType<void>, mut: MutationRecord[], timeoutId: NodeJS.Timeout, ob: MutationObserver) => {
-            if (mut.filter((m)=>m.addedNodes).length > 0 && document.querySelector("#board-layout-sidebar button.resign-button-component")) {    
+            if (mut.filter((m)=>m.addedNodes).length > 0 && document.querySelector(`#board-layout-sidebar button[aria-label='${resignLabel}']`)) {    
                 clearTimeout(timeoutId);
                 ob.disconnect();
                 resolve();
@@ -150,20 +139,18 @@ export class ChesscomAgent implements ChessAgentInterface {
             }, 10200);
             var observer = new MutationObserver((mut,ob)=>checkObserve(resolve, mut, timeoutId, ob));
             let node = document.querySelector("#board-layout-sidebar button.resign-button-component");
-            node = node ?? ((): Element => {
-                debugger;
-                let resignLabel: string = (chesscom_translations.messages)["Resign"] as string ?? "Resign";
-                return document.querySelector(`#board-layout-sidebar button[aria-label='${resignLabel}']`) ?? reject("Resign button not found")!;
+            node = node ?? ((): Element | null => {
+                return document.querySelector(`#board-layout-sidebar button[aria-label='${resignLabel}']`);
             })();
-            if (node == null) {
+            if (null == node) {
                 let panel = document.querySelector("#board-layout-sidebar") ?? reject("Board not found");
                 observer.observe(panel!, { childList: true });
             } else {
+                debugger;
                 resolve();
                 clearTimeout(timeoutId);
             }
         });
-        debugger;
         let state = board.state;
         return state.playingAs !== undefined && !state.isGameOver;
     }
