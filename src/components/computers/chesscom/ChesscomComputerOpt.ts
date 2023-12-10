@@ -86,8 +86,8 @@ export class ChesscomComputerOpt implements ComputerOptInterface {
             var x = new MutationObserver(function (mut, ob) {
                 if (mut[0].attributeName == "class" && document.querySelector("div.selection-menu-component") == null) {
                     clearTimeout(timeoutId);
-                    resolve();
                     ob.disconnect();
+                    resolve();
                 } 
             });
             if (node != null) {

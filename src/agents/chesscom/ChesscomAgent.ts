@@ -121,15 +121,34 @@ export class ChesscomAgent implements ChessAgentInterface {
             if (null == board) {
                 throw "Board not found";
             }
-            let playing = await board.evaluate((board: Element | any) => {
+
+            let playing = await board.evaluate(async (board: Element | any) => {
+                await new Promise<void>((resolve, reject) => {
+                    let timeoutId = setTimeout(() => {
+                        reject("Playing cannot be ensured: timed out");
+                    }, 10200);
+                    var observer = new MutationObserver(function (mut, ob) {
+                        if (mut.filter((m)=>m.addedNodes).length > 0 && document.querySelector("#board-layout-sidebar button.resign-button-component")) {    
+                            ob.disconnect();
+                            resolve();
+                        }
+                    });
+                    let node = document.querySelector("#board-layout-sidebar button.resign-button-component");
+                    if (node == null) {
+                        let panel = document.querySelector("#board-layout-sidebar") ?? reject("Board not found");
+                        observer.observe(panel!, { childList: true });
+                    } else {
+                        resolve();
+                        clearTimeout(timeoutId);
+                    }
+                });
                 let state = board.state;
                 return state.playingAs !== undefined && state.playingAs != null && !state.isGameOver;
             });
-            if (playing) {
-                return;
+            if (!playing) {
+                this.state = AgentState.IdleIllegalPlay;
+                throw "Agent is not detected to be playing";
             }
-            this.state = AgentState.IdleIllegalPlay;
-            throw "Agent is not detected to be playing";
         } catch (err) {
             this.state = AgentState.BrowserPageOutOfReach;
             throw err;
@@ -152,8 +171,8 @@ export class ChesscomAgent implements ChessAgentInterface {
                 var x = new MutationObserver(function (mut, ob) {
                     if (mut[0].removedNodes) {
                         clearTimeout(timeoutId);
-                        resolve();
                         ob.disconnect();
+                        resolve();
                     }
                 });
                 let node = document.querySelector("div[id^='placeholder-']");
@@ -185,8 +204,8 @@ export class ChesscomAgent implements ChessAgentInterface {
                 var x = new MutationObserver(function (_mut, ob) {
                     if (document.querySelector("#board-layout-sidebar button[title='Play']")) {
                         clearTimeout(timeoutId);
-                        resolve();
                         ob.disconnect();
+                        resolve();
                     }
                 });
                 let btn = document.querySelector("#board-layout-sidebar button[title='Play']");
