@@ -40,6 +40,7 @@ const askTurn = async (agent: ChessAgentInterface) => {
 	let quit: boolean = false;
 	do {
 		try {
+			await agent.waitTurn();
 			let from = await ask("From square: ");
 			let to = await ask("To square: ");
 			await agent.move(from, to);
@@ -87,6 +88,6 @@ const askTurn = async (agent: ChessAgentInterface) => {
 	} finally {
 		agent.dispose();
 		browser.close();
-		
+
 	}
 })();

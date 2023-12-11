@@ -121,11 +121,12 @@ export class ChesscomAgent implements ChessAgentInterface {
                 throw "Board not found";
             }
             await board.evaluate((board: Element | any, moveNumber) => new Promise<void>((resolve, reject)=>{
-                if (board.game.getLastMove().moveNumber + 1 >= moveNumber) {
+                debugger;
+                if ((board.game.getLastMove()?.moveNumber ?? -1) + 1 >= moveNumber) {
                     return resolve();
                 }
                 const handler = ():boolean => {
-                    if (board.game.getLastMove().moveNumber + 1 >= moveNumber) {
+                    if ((board.game.getLastMove()?.moveNumber ?? -1) + 1 >= moveNumber) {
                         if (timeoutElem) 
                             clearTimeout(timeoutElem);
                         if (timeoutTurning)
@@ -152,7 +153,7 @@ export class ChesscomAgent implements ChessAgentInterface {
                     // TODO Resign the game / ensure if still playing
                 }, 10 * MINUTE);
                 let timeoutElem = setTimeout(()=> {
-                    if (board.game.getLastMove().moveNumber + 1 >= moveNumber) {
+                    if ((board.game.getLastMove()?.moveNumber ?? -1) + 1 >= moveNumber) {
                         clearTimeout(timeoutTurning);
                         return resolve();
                     }
@@ -185,6 +186,7 @@ export class ChesscomAgent implements ChessAgentInterface {
         this.asBlack = await this.executeOnBoardElem((board: Element | any) => {
             return 2 == (board.state.playingAs as number);
         });
+        Promise.resolve();
     }
     private async executeOnBoardElem<T>(promise: (board: Element | any, ...args: any) => T, ...evalArgs: any): Promise<T> {
         let board: ElementHandle<Element> | null = null;
@@ -226,7 +228,6 @@ export class ChesscomAgent implements ChessAgentInterface {
                 let panel = document.querySelector("#board-layout-sidebar") ?? reject("Board not found");
                 observer.observe(panel!, { childList: true });
             } else {
-                debugger;
                 resolve();
                 clearTimeout(timeoutId);
             }
@@ -272,15 +273,15 @@ export class ChesscomAgent implements ChessAgentInterface {
                     resolve();
                 }
             }));
-            await this.page.$("div[id^='placeholder-'] div.ui_modal-component").then((modal)=> {
-                modal?.dispose();
+            await this.page.$("div[id^='placeholder-'] div.ui_modal-component").then(async (modal)=> {
+                await modal?.dispose();
                 if (null != modal)
                     throw "Cannot close modal";
             });
-            await this.page.$("#board-layout-sidebar div.bot-selection-scroll").then((selection)=> {
-                selection?.dispose();
+            await this.page.$("#board-layout-sidebar div.bot-selection-scroll").then(async (selection)=> {
                 if (null == selection)
                     throw "Cannot find bot selection";
+                await selection?.dispose();
             });
             let configState = await computer.selectMe(this.page);
             if (configState != ComputerConfigState.Chosen) {
