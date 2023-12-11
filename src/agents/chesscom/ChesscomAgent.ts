@@ -5,7 +5,6 @@ import { PlayState } from "@components/PlayState";
 import { Square } from "@components/Square";
 import { ComputerOptInterface } from "@components/computers/ComputerOptInterface";
 import { ResolveType} from "@misc/Util";
-import { Board } from "@misc/chesscom/ChesscomGame";
 import { Browser, ElementHandle, Page } from "puppeteer";
 
 declare global {
@@ -17,6 +16,7 @@ export class ChesscomAgent implements ChessAgentInterface {
     private state: AgentState;
     private playing: PlayState;
     private asBlack?: boolean;
+    private agentMoveNumber?: number;
     public constructor(page: Page) {
         if (ChesscomAgent.UNIQUE_PAGES.has(page)) {
             throw "Another Chess.com agent has already attached this page";
@@ -50,10 +50,17 @@ export class ChesscomAgent implements ChessAgentInterface {
             throw err;
         }
     }
-    private async isBoardFlip() {
-
-    }
     async move(from: Square, to: Square): Promise<AgentState> {
+        if (PlayState.NotPlaying == this.playing) {
+            throw "Agent is not playing";
+        }
+        if (AgentState.TakingTurn != this.state) {
+            await this.waitTurn().then((state)=> {
+                if (state != AgentState.TakingTurn) {
+                    throw `Agent could not making move. State: ${state}`;
+                }
+            });
+        }
         let board: ElementHandle<Element> | null = null;
         try {
             board = await this.page.$("wc-chess-board");
@@ -61,31 +68,105 @@ export class ChesscomAgent implements ChessAgentInterface {
                 this.state = AgentState.BrowserPageOutOfReach;
                 throw "Board not found";
             }
-            let asBlack = "black" == (await this.blackOrWhite);
-            let bgSqr = await this.resolveBoardSquare(board, from); // TODO handle black/white state
+            let bgSqr = await this.resolveBoardSquare(board, from);
             let enSqr = await this.resolveBoardSquare(board, to);
-            await this.page.evaluate((board, bgSqr, enSqr) => new Promise<void>((resolve, reject)=>{
-                let timeoutId = setTimeout(() => {
-                    throw "Agent making a move times out";
-                }, 5200);
+            await board.evaluate((board: Element | any, bgSqr, enSqr, moveNumber) => new Promise<void>((resolve, reject)=>{
                 let dragbegin = new PointerEvent('pointerdown', { clientX: bgSqr[0], clientY: bgSqr[1], bubbles:true});
                 let dragend = new PointerEvent('pointerup', { clientX: enSqr[0], clientY: enSqr[1], bubbles:true});
+                const removeListener = (handler: ()=>void) => {
+                    let idx = (board.game.listeners as Array<Object>).indexOf(handler);
+                    if (idx > -1) {
+                        (board.game.listeners as Array<Object>).splice(idx, 1);
+                    }
+                }
+                let timeoutId = setTimeout(() => {
+                    if (board.game.getLastMove().moveNumber >= moveNumber) {
+                        return resolve();
+                    }
+                    return reject("Agent making a move times out");
+                }, 5000);
+                const handler = (): boolean => {
+                    if (board.game.getLastMove().moveNumber >= moveNumber) {
+                        clearTimeout(timeoutId);
+                        removeListener(handler);
+                        resolve();
+                        return true;
+                    }
+                    return false;
+                }
+                board.game.listeners.push({
+                    type: "Move",
+                    handler: handler
+                });
                 board.dispatchEvent(dragbegin);
                 board.dispatchEvent(dragend);
-
-                // TODO handle waiting turn and make sure move is taken
-
-                clearTimeout(timeoutId);
-                resolve();
-            }), board, bgSqr, enSqr);
+            }), bgSqr, enSqr, this.agentMoveNumber!);
         } catch (err: any) {
             throw [err, (this.state = AgentState.MovedIllegal)] as [any, AgentState]; // TODO handle better illegal move
         } finally {
             await board?.dispose();
         }
+        this.agentMoveNumber! += 2;
         return (this.state = AgentState.MovedWaitingTurn)
     }
     async waitTurn(): Promise<AgentState> {
+        if (PlayState.NotPlaying == this.playing) {
+            throw "Agent is not playing";
+        }
+        let board: ElementHandle<Element> | null = null;
+        try {
+            board = await this.page.$("wc-chess-board");
+            if (board == null) {
+                this.state = AgentState.BrowserPageOutOfReach;
+                throw "Board not found";
+            }
+            await board.evaluate((board: Element | any, moveNumber) => new Promise<void>((resolve, reject)=>{
+                if (board.game.getLastMove().moveNumber + 1 >= moveNumber) {
+                    return resolve();
+                }
+                const handler = ():boolean => {
+                    if (board.game.getLastMove().moveNumber + 1 >= moveNumber) {
+                        if (timeoutElem) 
+                            clearTimeout(timeoutElem);
+                        if (timeoutTurning)
+                            clearTimeout(timeoutTurning);
+                        removeListener(handler);
+                        resolve();
+                        return true;
+                    }
+                    return false;
+                }
+                board.game.listeners.push({
+                    type: "Move",
+                    handler: handler
+                });
+                const removeListener = (handler: ()=>void) => {
+                    let idx = (board.game.listeners as Array<Object>).indexOf(handler);
+                    if (idx > -1) {
+                        (board.game.listeners as Array<Object>).splice(idx, 1);
+                    }
+                }
+                const MINUTE = 1000 * 60;
+                let timeoutTurning = setTimeout(() => {
+                    reject("Waiting for turn times out");
+                    // TODO Resign the game / ensure if still playing
+                }, 10 * MINUTE);
+                let timeoutElem = setTimeout(()=> {
+                    if (board.game.getLastMove().moveNumber + 1 >= moveNumber) {
+                        clearTimeout(timeoutTurning);
+                        return resolve();
+                    }
+                }, 5000);
+                handler();
+            }), this.agentMoveNumber!);
+        } catch (err) {
+            throw [err, (this.state = AgentState.BrowserPageOutOfReach)] as [any, AgentState];
+        } finally {
+            await board?.dispose();
+        }
+        return (this.state = AgentState.TakingTurn);
+    }
+    async premove(): Promise<void> {
         throw new Error("Method not implemented.");
     }
     get status(): AgentState {
@@ -105,7 +186,7 @@ export class ChesscomAgent implements ChessAgentInterface {
             return 2 == (board.state.playingAs as number);
         });
     }
-    private async executeOnBoardElem<T>(promise: (board: Element | Board, ...args: any) => T, ...evalArgs: any): Promise<T> {
+    private async executeOnBoardElem<T>(promise: (board: Element | any, ...args: any) => T, ...evalArgs: any): Promise<T> {
         let board: ElementHandle<Element> | null = null;
         try {
             board = await this.page.$("wc-chess-board");
@@ -244,6 +325,7 @@ export class ChesscomAgent implements ChessAgentInterface {
             }
             throw ([error, (this.state = state)] as [unknown, AgentState]);
         }
+        this.agentMoveNumber = this.asBlack! ? 1 : 0;
         this.playing = PlayState.AgainstComputer;
         return (this.state = AgentState.TakingTurn);
     }
@@ -264,5 +346,6 @@ export class ChesscomAgent implements ChessAgentInterface {
         ChesscomAgent.UNIQUE_PAGES.delete(this.page);
         await page.close();
         delete this.asBlack;
+        delete this.agentMoveNumber;
     }
 }
