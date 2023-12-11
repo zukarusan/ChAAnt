@@ -1,6 +1,7 @@
 import { ComputerConfigState } from "@components/ComputerConfigState";
 import { ComputerOptInterface } from "../ComputerOptInterface";
 import puppeteer, { Page } from "puppeteer";
+import { ResolveType } from "@misc/Util";
 
 export class ChesscomComputerOpt implements ComputerOptInterface {
     private static readonly computerConfigs: ChesscomComputerOpt[] = new Array<ChesscomComputerOpt>();
@@ -22,7 +23,7 @@ export class ChesscomComputerOpt implements ComputerOptInterface {
         this._elo = elo;
         this._group = group;
     }
-    private static async initComputers(resolve: (value: boolean | PromiseLike<boolean>) => void, reject: (reason?: any) => void): Promise<void> {
+    private static async initComputers(resolve: ResolveType<boolean>, reject: (reason?: any) => void): Promise<void> {
         try {
             const browser = await puppeteer.launch({
                 headless: true

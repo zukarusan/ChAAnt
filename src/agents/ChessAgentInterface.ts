@@ -15,4 +15,6 @@ export interface ChessAgentInterface {
     playBlitz(...args: any): Promise<AgentState>;
     playBullet(...args: any): Promise<AgentState>;
     playClassical(...args: any): Promise<AgentState>;
+
+    dispose(): Promise<void>;
 }

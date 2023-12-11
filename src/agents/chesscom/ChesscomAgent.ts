@@ -4,9 +4,9 @@ import { ComputerConfigState } from "@components/ComputerConfigState";
 import { PlayState } from "@components/PlayState";
 import { Square } from "@components/Square";
 import { ComputerOptInterface } from "@components/computers/ComputerOptInterface";
-import { ResolveType } from "@misc/Util";
-import { Board, State } from "@misc/chesscom/ChesscomGame";
-import { ElementHandle, Page } from "puppeteer";
+import { ResolveType} from "@misc/Util";
+import { Board } from "@misc/chesscom/ChesscomGame";
+import { Browser, ElementHandle, Page } from "puppeteer";
 
 declare global {
     var chesscom_translations: any;
@@ -16,7 +16,7 @@ export class ChesscomAgent implements ChessAgentInterface {
     private page: Page;
     private state: AgentState;
     private playing: PlayState;
-    private asBlack: boolean | undefined;
+    private asBlack?: boolean;
     public constructor(page: Page) {
         if (ChesscomAgent.UNIQUE_PAGES.has(page)) {
             throw "Another Chess.com agent has already attached this page";
@@ -27,7 +27,6 @@ export class ChesscomAgent implements ChessAgentInterface {
         this.asBlack = undefined;
         ChesscomAgent.UNIQUE_PAGES.add(page);
     }
-    
     private async resolveBoardSquare(board: ElementHandle, square: Square): Promise<[number, number]> {
         let fileIdx = square.file + 1, rankIdx = square.rank + 1;
         if (this.asBlack) {
@@ -260,4 +259,10 @@ export class ChesscomAgent implements ChessAgentInterface {
     async playClassical(...args: any): Promise<AgentState> {
         throw new Error("Method not implemented.");
     }
-} 
+    async dispose(): Promise<void> {
+        const page = this.page
+        ChesscomAgent.UNIQUE_PAGES.delete(this.page);
+        await page.close();
+        delete this.asBlack;
+    }
+}

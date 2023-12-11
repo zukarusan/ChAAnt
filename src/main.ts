@@ -48,6 +48,7 @@ const askTurn = async (agent: ChessAgentInterface) => {
 			if (!quit) console.error(`Invalid move! Reason: ${err}`);
 		}
 	} while(!quit);
+	console.info("Quitting...");
 } 
 
 (async () => {
@@ -80,9 +81,12 @@ const askTurn = async (agent: ChessAgentInterface) => {
 	} catch (err: any) {
 		if (err instanceof Array) {
 			let state = err[1] as AgentState;
-			browser.close();
 			console.error(`Browser out of reach: ${AgentState[state]}`);
 			console.error("Error cause: ", err[0]);
 		}
+	} finally {
+		agent.dispose();
+		browser.close();
+		
 	}
 })();
