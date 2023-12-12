@@ -21,15 +21,15 @@ const rlconsole = readline.createInterface({
 
 const { v4: uuidv4 } = require('uuid');
 const quitId: string = uuidv4();
-const ask = (prompt: string): Promise<Square> =>  new Promise<Square>((resolve, reject) =>  {
+const ask = (prompt: string): Promise<string> =>  new Promise<string>((resolve, reject) =>  {
 	rlconsole.question(prompt, (answer) => {
-		let ans = answer.toLowerCase();
+		let ans = answer.toLowerCase().trim();
 		if (ans == 'quit') {
 			reject(quitId);
 			return;
 		}
 		try {
-			resolve(Square.square(answer));
+			resolve(ans);
 		} catch(err: any) {
 			reject(err);
 		}
@@ -41,9 +41,8 @@ const askTurn = async (agent: ChessAgentInterface) => {
 	do {
 		try {
 			await agent.waitTurn();
-			let from = await ask("From square: ");
-			let to = await ask("To square: ");
-			await agent.move(from, to);
+			let move = await ask("Your move: ");
+			await agent.move(move);
 		} catch (err: any) {
 			quit = err == quitId;
 			if (!quit) console.error(`Invalid move! Reason: ${err}`);

@@ -4,7 +4,7 @@ import { ComputerConfigState } from "@components/ComputerConfigState";
 import { PlayState } from "@components/PlayState";
 import { Square } from "@components/Square";
 import { ComputerOptInterface } from "@components/computers/ComputerOptInterface";
-import { ResolveType} from "@misc/Util";
+import { PieceNotation, ResolveType} from "@misc/Util";
 import { Browser, ElementHandle, Page } from "puppeteer";
 
 declare global {
@@ -50,7 +50,7 @@ export class ChesscomAgent implements ChessAgentInterface {
             throw err;
         }
     }
-    async move(from: Square, to: Square): Promise<AgentState> {
+    async move(moveNotation: string): Promise<AgentState> {
         if (PlayState.NotPlaying == this.playing) {
             throw "Agent is not playing";
         }
@@ -61,8 +61,10 @@ export class ChesscomAgent implements ChessAgentInterface {
                 }
             });
         }
+        
         let board: ElementHandle<Element> | null = null;
         try {
+            const { from: from, to: to} = await this.evalMove(moveNotation);
             board = await this.page.$("wc-chess-board");
             if (board == null) {
                 this.state = AgentState.BrowserPageOutOfReach;
@@ -108,6 +110,55 @@ export class ChesscomAgent implements ChessAgentInterface {
         }
         this.agentMoveNumber! += 2;
         return (this.state = AgentState.MovedWaitingTurn)
+    }
+    private async evalMove(move: string): Promise<{"from": Square, "to": Square}> {
+        let piece: PieceNotation;
+        let to: string;
+        try {
+            // todo extract "to"
+            to = "";
+            piece = move.trim().charAt(0) as PieceNotation;
+
+        } catch(err) {
+            throw `Invalid chess notation move: ${move}`
+        }
+        try {
+            let squares = await this.executeOnBoardElem((board, piece, to): [string, string]=>{
+                type Piece = {type: string, color: 1 | 2, promoted: boolean, square: string};
+                let pieces: Array<Piece> = board.game.getPieces();
+                let legalPieces: Array<Piece> = [];
+                let agentColor: 1 | 2 | undefined | null = board.state.playingAs;
+                if (!agentColor) {
+                    throw "Could not determine whether playing as black or white";
+                }
+                pieces.forEach((pc)=>{
+                    let legalMvsPc: Array<string> = board.game.getLegalMovesForSquare(pc.square)
+                    if (pc.type == piece && legalMvsPc.includes(to) && pc.color == agentColor) {
+                        legalPieces.push(pc);
+                    }
+                });
+                if (0 == legalPieces.length) {
+                    throw 1;
+                }
+                if (1 < legalPieces.length) {
+                    throw 2;
+                }
+                return [legalPieces[0].square, to];
+            }, piece, to);
+            return {
+                "from": Square.square(squares[0]),
+                "to": Square.square(squares[1])
+            }
+        } catch(err) {
+            if (1 == err) {
+                err = `No piece correspond to the move ${move}`
+            } else if (2 == err) {
+                err = `Ambigous move: ${move}`
+            } else {
+                this.state = AgentState.BrowserPageOutOfReach;
+            }
+            throw err;
+        }
     }
     async waitTurn(): Promise<AgentState> {
         if (PlayState.NotPlaying == this.playing) {
@@ -181,6 +232,9 @@ export class ChesscomAgent implements ChessAgentInterface {
             throw "Agent piece color is not defined";
         }
         return this.asBlack ? "black" : "white";
+    }
+    get lastMove(): Promise<string> {
+        throw "lastMove is not implemented";
     }
     private async evaluateBlackOrWhite(): Promise<void> {
         this.asBlack = await this.executeOnBoardElem((board: Element | any) => {
