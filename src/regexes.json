@@ -1,0 +1,10 @@
+{
+    "regexes": {
+        "chess-notation-move": "^(?:(?:O-O(?:-O)?)|(?:([KQNBR])?((?:[a-h][1-8])?[a-h]?)x?([a-h][1-8]))|([a-h]8[=/\\(]?([KQNBR])\\)?))[+#]?$"
+    },
+    "tests": {
+        "chess-notation-move": [
+            "e4","e5","Nf3","Nc6","Bb5","a6","Bxc6","dxc6","O-O","Bg4","h3","h5","d3","Qf6","Nbd2","Ne7","Re1","Ng6","d4","Nf4","hxg4","hxg4","g3","gxf3","Qxf3","Ne6","dxe5","Qxe5","Qf5","Qb5","a4","Qb4","c3","Qc5","Nb3","Qb6","Nd4","Nxd4","cxd4","Qxd4","e5","Be7","e6","O-O","Bf4","Qd5","Re5","fxe6","Qg6","Qd7","Rh5","Bf6","Re1","Qe8","Qh7+","Kf7","Qe4","Rd8","Be5","Rd5","Qf3","Ke7","Qg4","Kd7","Bxf6","gxf6","Rh7+","Rf7","Rxe6","f5","Rxe8","fxg4","Reh8","Rxh7","Rxh7+","Kd6","Rg7","Rd4","a5","Rb4","Kg2","b6","Rg6+","Kd7","Rg7+","Kd6","Rg6+","Kd7","Rg7+","Kc8","Rg5","c5","Rg6","Kb7","b3","bxa5","Rg5","Kb6","Rg6+","c6","Rg5","a4","bxa4","Rxa4","Rg8","Rd4","Kf1","a5","Ke2","a4","Ra8","Kb5","f3","gxf3+","Kxf3","c4","g4","c3","Rb8+","Kc4","Rb1","c2","Ra1","Kb3","Qh4e1","O-O-O","Qh4xe1","e8Q","e8=Q","e8(Q)","e8/Q"
+        ]
+    }
+}

@@ -4,7 +4,7 @@ import { ComputerConfigState } from "@components/ComputerConfigState";
 import { PlayState } from "@components/PlayState";
 import { Square } from "@components/Square";
 import { ComputerOptInterface } from "@components/computers/ComputerOptInterface";
-import { PieceNotation, ResolveType} from "@misc/Util";
+import { PieceNotation, ResolveType, notationMoveRegex} from "@misc/Util";
 import { Browser, ElementHandle, Page } from "puppeteer";
 
 declare global {
@@ -17,6 +17,7 @@ export class ChesscomAgent implements ChessAgentInterface {
     private playing: PlayState;
     private asBlack?: boolean;
     private agentMoveNumber?: number;
+    private static castles = {"o-o": { "white": ["e1", "g1"], "black": ["e8", "g8"] }, "o-o-o": { "white": ["e1", "c1"], "black": ["e8", "c8"] }}
     public constructor(page: Page) {
         if (ChesscomAgent.UNIQUE_PAGES.has(page)) {
             throw "Another Chess.com agent has already attached this page";
@@ -109,28 +110,44 @@ export class ChesscomAgent implements ChessAgentInterface {
             await board?.dispose();
         }
         this.agentMoveNumber! += 2;
-        return (this.state = AgentState.MovedWaitingTurn)
+        return (this.state = AgentState.MovedWaitingTurn);
     }
+    // todo handle promotion
     private async evalMove(move: string): Promise<{"from": Square, "to": Square}> {
         let piece: PieceNotation;
         let to: string;
+        let from: string;
+        let sanitizedMove = move.trim().replace(/\s*/, "");
         try {
-            // todo extract "to"
-            to = "";
-            piece = move.trim().charAt(0) as PieceNotation;
-
+            let rMove = notationMoveRegex.exec(sanitizedMove);
+            if (null == rMove) {
+                throw rMove;
+            }
+            sanitizedMove = rMove[0].toLowerCase();
+            piece = (rMove[1]?.toLowerCase() ?? PieceNotation.Pawn) as PieceNotation;
+            from = rMove[2].toLowerCase();
+            to = rMove[3].toLowerCase();
         } catch(err) {
             throw `Invalid chess notation move: ${move}`
         }
+        if (sanitizedMove.startsWith("o-o")) {
+            const castle: "o-o-o" | "o-o" = sanitizedMove.split("-").length >= 3 ? "o-o-o" : "o-o";
+            const squares = ChesscomAgent.castles[castle][this.blackOrWhite];
+            return {
+                "from": Square.square(squares[0]),
+                "to": Square.square(squares[1])
+            }
+        }
         try {
-            let squares = await this.executeOnBoardElem((board, piece, to): [string, string]=>{
+            let squares = await this.executeOnBoardElem((board, piece: PieceNotation, from: string, to: string): [string, string]=>{
                 type Piece = {type: string, color: 1 | 2, promoted: boolean, square: string};
-                let pieces: Array<Piece> = board.game.getPieces();
+                let pieces: Array<Piece> = Object.values(board.game.getPieces().getCollection());
                 let legalPieces: Array<Piece> = [];
-                let agentColor: 1 | 2 | undefined | null = board.state.playingAs;
+                let agentColor: 1 | 2 | undefined | null = board.game.getPlayingAs();
                 if (!agentColor) {
                     throw "Could not determine whether playing as black or white";
                 }
+                debugger;
                 pieces.forEach((pc)=>{
                     let legalMvsPc: Array<string> = board.game.getLegalMovesForSquare(pc.square)
                     if (pc.type == piece && legalMvsPc.includes(to) && pc.color == agentColor) {
@@ -141,10 +158,10 @@ export class ChesscomAgent implements ChessAgentInterface {
                     throw 1;
                 }
                 if (1 < legalPieces.length) {
-                    throw 2;
+                    return [(legalPieces.filter((pc)=>pc.square.includes(from))[0] ?? (()=>{throw 2})()).square, to];
                 }
                 return [legalPieces[0].square, to];
-            }, piece, to);
+            }, piece, from, to);
             return {
                 "from": Square.square(squares[0]),
                 "to": Square.square(squares[1])
@@ -172,7 +189,6 @@ export class ChesscomAgent implements ChessAgentInterface {
                 throw "Board not found";
             }
             await board.evaluate((board: Element | any, moveNumber) => new Promise<void>((resolve, reject)=>{
-                debugger;
                 if ((board.game.getLastMove()?.moveNumber ?? -1) + 1 >= moveNumber) {
                     return resolve();
                 }
@@ -249,7 +265,7 @@ export class ChesscomAgent implements ChessAgentInterface {
             if (null == board) {
                 throw "Board not found";
             }
-            return await board.evaluate(promise, evalArgs);
+            return await board.evaluate(promise, ...evalArgs);
         } catch (err) {
             this.state = AgentState.BrowserPageOutOfReach;
             throw err;
