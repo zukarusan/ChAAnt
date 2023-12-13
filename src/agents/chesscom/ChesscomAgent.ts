@@ -137,21 +137,21 @@ export class ChesscomAgent implements ChessAgentInterface {
                 throw rMove;
             }
             sanitizedMove = rMove[0].toLowerCase();
+            if (sanitizedMove.startsWith("o-o")) {
+                const castle: "o-o-o" | "o-o" = sanitizedMove.split("-").length >= 3 ? "o-o-o" : "o-o";
+                const squares = ChesscomAgent.castles[castle][this.blackOrWhite];
+                return {
+                    "from": Square.square(squares[0]),
+                    "to": Square.square(squares[1]),
+                    "promoteTo": undefined
+                }
+            }
             piece = (rMove[1]?.toLowerCase() ?? PieceNotation.Pawn) as PieceNotation;
             from = rMove[2].toLowerCase();
             to = rMove[3].toLowerCase();
             promoteTo = (rMove[5]?.toLowerCase()) as PieceNotation | undefined;
         } catch(err) {
             throw `Invalid chess notation move: ${move}`
-        }
-        if (sanitizedMove.startsWith("o-o")) {
-            const castle: "o-o-o" | "o-o" = sanitizedMove.split("-").length >= 3 ? "o-o-o" : "o-o";
-            const squares = ChesscomAgent.castles[castle][this.blackOrWhite];
-            return {
-                "from": Square.square(squares[0]),
-                "to": Square.square(squares[1]),
-                "promoteTo": undefined
-            }
         }
         try {
             let squares = await this.executeOnBoardElem((board, piece: PieceNotation, from: string, to: string): [string, string]=>{
