@@ -169,12 +169,20 @@ export class ChesscomAgent implements ChessAgentInterface {
                         legalPieces.push(pc);
                     }
                 });
-                if (0 == legalPieces.length) {
-                    throw 1;
+                const assertLegal = (onMany: ()=>void)=> {
+                    if (0 == legalPieces.length) {
+                        throw 1;
+                    }
+                    if (1 < legalPieces.length) {
+                        onMany();
+                    }
                 }
-                if (1 < legalPieces.length) {
-                    return [(legalPieces.filter((pc)=>pc.square.includes(from))[0] ?? (()=>{throw 2})()).square, to];
-                }
+                assertLegal(()=>{
+                    legalPieces = legalPieces.filter((pc)=>pc.square.includes(from));
+                    assertLegal(()=>{
+                        throw 2;
+                    });
+                })
                 return [legalPieces[0].square, to];
             }, piece, from, to);
             return {
