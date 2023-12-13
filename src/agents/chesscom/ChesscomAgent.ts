@@ -52,6 +52,10 @@ export class ChesscomAgent implements ChessAgentInterface {
         }
     }
     async move(moveNotation: string): Promise<AgentState> {
+        const { from: from, to: to, promoteTo: promoteTo} = await this.evalMove(moveNotation);
+        return await this.moveBySquare(from, to, promoteTo);
+    }
+    public async moveBySquare(from: Square, to: Square, promoteTo: PieceNotation | undefined = undefined): Promise<AgentState> {
         if (PlayState.NotPlaying == this.playing) {
             throw "Agent is not playing";
         }
@@ -65,7 +69,6 @@ export class ChesscomAgent implements ChessAgentInterface {
         
         let board: ElementHandle<Element> | null = null;
         try {
-            const { from: from, to: to} = await this.evalMove(moveNotation);
             board = await this.page.$("wc-chess-board");
             if (board == null) {
                 this.state = AgentState.BrowserPageOutOfReach;
@@ -73,7 +76,7 @@ export class ChesscomAgent implements ChessAgentInterface {
             }
             let bgSqr = await this.resolveBoardSquare(board, from);
             let enSqr = await this.resolveBoardSquare(board, to);
-            await board.evaluate((board: Element | any, bgSqr, enSqr, moveNumber) => new Promise<void>((resolve, reject)=>{
+            await board.evaluate((board: Element | any, bgSqr, enSqr, moveNumber, promoteTo) => new Promise<void>((resolve, reject)=>{
                 let dragbegin = new PointerEvent('pointerdown', { clientX: bgSqr[0], clientY: bgSqr[1], bubbles:true});
                 let dragend = new PointerEvent('pointerup', { clientX: enSqr[0], clientY: enSqr[1], bubbles:true});
                 const removeListener = (handler: ()=>void) => {
@@ -103,7 +106,10 @@ export class ChesscomAgent implements ChessAgentInterface {
                 });
                 board.dispatchEvent(dragbegin);
                 board.dispatchEvent(dragend);
-            }), bgSqr, enSqr, this.agentMoveNumber!);
+                
+                // todo handle promotion
+
+            }), bgSqr, enSqr, this.agentMoveNumber!, promoteTo);
         } catch (err: any) {
             throw [err, (this.state = AgentState.MovedIllegal)] as [any, AgentState]; // TODO handle better illegal move
         } finally {
@@ -112,12 +118,19 @@ export class ChesscomAgent implements ChessAgentInterface {
         this.agentMoveNumber! += 2;
         return (this.state = AgentState.MovedWaitingTurn);
     }
-    // todo handle promotion
-    private async evalMove(move: string): Promise<{"from": Square, "to": Square}> {
+    public async evalMove(move: string): Promise<{"from": Square, "to": Square, "promoteTo": PieceNotation | undefined}> {
         let piece: PieceNotation;
         let to: string;
         let from: string;
+        let promoteTo: PieceNotation | undefined;
         let sanitizedMove = move.trim().replace(/\s*/, "");
+        if (AgentState.TakingTurn != this.state) {
+            await this.waitTurn().then((state)=> {
+                if (state != AgentState.TakingTurn) {
+                    throw `Agent could not making move. State: ${state}`;
+                }
+            });
+        }
         try {
             let rMove = notationMoveRegex.exec(sanitizedMove);
             if (null == rMove) {
@@ -127,6 +140,7 @@ export class ChesscomAgent implements ChessAgentInterface {
             piece = (rMove[1]?.toLowerCase() ?? PieceNotation.Pawn) as PieceNotation;
             from = rMove[2].toLowerCase();
             to = rMove[3].toLowerCase();
+            promoteTo = (rMove[5]?.toLowerCase()) as PieceNotation | undefined;
         } catch(err) {
             throw `Invalid chess notation move: ${move}`
         }
@@ -135,7 +149,8 @@ export class ChesscomAgent implements ChessAgentInterface {
             const squares = ChesscomAgent.castles[castle][this.blackOrWhite];
             return {
                 "from": Square.square(squares[0]),
-                "to": Square.square(squares[1])
+                "to": Square.square(squares[1]),
+                "promoteTo": undefined
             }
         }
         try {
@@ -164,7 +179,8 @@ export class ChesscomAgent implements ChessAgentInterface {
             }, piece, from, to);
             return {
                 "from": Square.square(squares[0]),
-                "to": Square.square(squares[1])
+                "to": Square.square(squares[1]),
+                "promoteTo": promoteTo
             }
         } catch(err) {
             if (1 == err) {
