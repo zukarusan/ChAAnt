@@ -9,6 +9,7 @@ import { Browser, ElementHandle, Page } from "puppeteer";
 
 declare global {
     var chesscom_translations: any;
+    function getRandomHalf(min: number, max: number): Promise<number>;
 }
 export class ChesscomAgent implements ChessAgentInterface {
     private static UNIQUE_PAGES: Set<Page> = new Set<Page>();
@@ -27,6 +28,12 @@ export class ChesscomAgent implements ChessAgentInterface {
         this.playing = PlayState.NotPlaying;
         this.asBlack = undefined;
         ChesscomAgent.UNIQUE_PAGES.add(page);
+        this.initAsync();
+    }
+    private async initAsync() {
+        await this.page.exposeFunction("getRandomHalf", (max:number, min:number)=> {
+            return Math.random() * (max - min) + min;
+        });
     }
     private async resolveBoardSquare(board: ElementHandle, square: Square): Promise<[number, number]> {
         let fileIdx = square.file + 1, rankIdx = square.rank + 1;
@@ -36,15 +43,17 @@ export class ChesscomAgent implements ChessAgentInterface {
             rankIdx = 8 - rankIdx + 1;
         }
         try {
-            return await board.evaluate((board, fileIdx, rankIdx) : [number, number] => {
+            return await board.evaluate(async (board, fileIdx, rankIdx) : Promise<[number, number]> => {
                 let rect = board.getClientRects()[0];
                 let pieceSample = board.querySelector(".piece");
                 if (pieceSample == null) {
                     throw `Cannot find targeted piece: ${square.notation}`;
                 }
+                debugger;
                 let squareLength = pieceSample.clientWidth;
-                let half = squareLength / 2;
-                return [rect.x+(squareLength * fileIdx) - half, rect.y+(squareLength * rankIdx) - half];
+                let halfX = squareLength * await getRandomHalf(0.1, 0.9);
+                let halfY = squareLength * await getRandomHalf(0.1, 0.9);
+                return [rect.x+(squareLength * fileIdx) - halfX, rect.y+(squareLength * rankIdx) - halfY];
             }, fileIdx, rankIdx);
         } catch (err: any) {
             this.state = AgentState.BrowserPageOutOfReach;
@@ -76,7 +85,7 @@ export class ChesscomAgent implements ChessAgentInterface {
             }
             let bgSqr = await this.resolveBoardSquare(board, from);
             let enSqr = await this.resolveBoardSquare(board, to);
-            await board.evaluate((board: Element | any, bgSqr, enSqr, moveNumber, promoteTo) => new Promise<void>((resolve, reject)=>{
+            await board.evaluate((board: Element | any, bgSqr, enSqr, moveNumber) => new Promise<void>((resolve, reject)=>{
                 let dragbegin = new PointerEvent('pointerdown', { clientX: bgSqr[0], clientY: bgSqr[1], bubbles:true});
                 let dragend = new PointerEvent('pointerup', { clientX: enSqr[0], clientY: enSqr[1], bubbles:true});
                 const removeListener = (handler: ()=>void) => {
@@ -89,7 +98,7 @@ export class ChesscomAgent implements ChessAgentInterface {
                     if (board.game.getLastMove().moveNumber >= moveNumber) {
                         return resolve();
                     }
-                    return reject("Agent making a move times out");
+                    return reject(-1);
                 }, 5000);
                 const handler = (): boolean => {
                     if (board.game.getLastMove().moveNumber >= moveNumber) {
@@ -106,11 +115,18 @@ export class ChesscomAgent implements ChessAgentInterface {
                 });
                 board.dispatchEvent(dragbegin);
                 board.dispatchEvent(dragend);
-                
-                // todo handle promotion
+            }), bgSqr, enSqr, this.agentMoveNumber!);
 
-            }), bgSqr, enSqr, this.agentMoveNumber!, promoteTo);
+            if (promoteTo !== undefined) {
+                await this.page.waitForSelector(`div[class*=promotion] > .w${promoteTo}`).then(async (piece)=> {
+                    await piece?.click();
+                });
+            }
         } catch (err: any) {
+            if (-1 == err) {
+                await this.page.reload();
+                err = "Agent making a move times out";
+            }
             throw [err, (this.state = AgentState.MovedIllegal)] as [any, AgentState]; // TODO handle better illegal move
         } finally {
             await board?.dispose();
@@ -182,7 +198,7 @@ export class ChesscomAgent implements ChessAgentInterface {
                     assertLegal(()=>{
                         throw 2;
                     });
-                })
+                });
                 return [legalPieces[0].square, to];
             }, piece, from, to);
             return {
@@ -242,7 +258,7 @@ export class ChesscomAgent implements ChessAgentInterface {
                 let timeoutTurning = setTimeout(() => {
                     reject("Waiting for turn times out");
                     // TODO Resign the game / ensure if still playing
-                }, 10 * MINUTE);
+                }, 4 * MINUTE);
                 let timeoutElem = setTimeout(()=> {
                     if ((board.game.getLastMove()?.moveNumber ?? -1) + 1 >= moveNumber) {
                         clearTimeout(timeoutTurning);
@@ -372,6 +388,7 @@ export class ChesscomAgent implements ChessAgentInterface {
                 if (null != modal)
                     throw "Cannot close modal";
             });
+            await this.page.waitForSelector('#board-layout-sidebar div.bot-selection-scroll');
             await this.page.$("#board-layout-sidebar div.bot-selection-scroll").then(async (selection)=> {
                 if (null == selection)
                     throw "Cannot find bot selection";

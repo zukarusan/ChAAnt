@@ -2,6 +2,7 @@ import { ChessAgentInterface } from "@agents/ChessAgentInterface";
 import { ChesscomAgent } from "@agents/chesscom/ChesscomAgent";
 import { AgentState } from "@components/AgentState";
 import { Square } from "@components/Square";
+import { ComputerOptInterface } from "@components/computers/ComputerOptInterface";
 import { ChesscomComputerOpt } from "@components/computers/chesscom/ChesscomComputerOpt";
 import * as puppeteer from "puppeteer";
 import * as readline from 'readline';
@@ -35,36 +36,57 @@ const ask = (prompt: string): Promise<string> =>  new Promise<string>((resolve, 
 		}
 	});
 });
-
-const askTurn = async (agent: ChessAgentInterface) => {
+const askUntilQuit = async(prompt: string, beforeAsk: ()=>Promise<void>, onAnswer: (ans: string)=>Promise<boolean>) => {
 	let quit: boolean = false;
 	do {
 		try {
-			await agent.waitTurn();
-			let move = await ask("Your move: ");
-			await agent.move(move);
+			await beforeAsk();
+			let ans = await ask(prompt);
+			if (!await onAnswer(ans)) {
+				break;
+			}
 		} catch (err: any) {
 			quit = err == quitId;
 			if (!quit) console.error(`Invalid move! Reason: ${err}`);
 		}
 	} while(!quit);
-	console.info("Quitting...");
-} 
-
-(async () => {
-	let bots = await ChesscomComputerOpt.getAvailableBots();
-	let mediumBot: ChesscomComputerOpt | null = null;
-	bots.every(b => {
-		if (b.elo >= 1600) {
-			mediumBot = b;
-			return false;
-		}
+}
+const askTurn = async (agent: ChessAgentInterface) => {
+	await askUntilQuit("Your move: ",  async ()=> {
+		await agent.waitTurn();
+	}, async (ans)=> {
+		agent.move(ans);
 		return true;
 	});
-	if (mediumBot == null) {
-		throw "No available medium bot";
+} 
+const showAllBots = (bots: Array<ComputerOptInterface>) => {
+	console.info("Available bots ")
+	console.info("========================");
+	bots.forEach((bot, idx)=> {
+		console.info(`${idx+1}. ${bot.name}. Rating: ${bot.elo}`);
+	});
+	console.info();
+};
+const askBot = async (bots: Array<ComputerOptInterface>): Promise<ComputerOptInterface>  => {
+	let bot: ComputerOptInterface | undefined;
+	await askUntilQuit("Choose bot to play against: ", async()=> {}, async (ans)=> {
+		let choice = parseInt(ans);
+		if (choice < 1 || choice > bots.length) {
+			throw "Invalid choice. Choose the correct available bot"
+		}
+		bot = bots[choice-1];
+		return false;
+	})
+	if (undefined === bot) {
+		throw "No chosen bot";
 	}
-	let bot = mediumBot as ChesscomComputerOpt;
+	return bot;
+}
+(async () => {
+	let chosenBot: ComputerOptInterface;
+	let bots = await ChesscomComputerOpt.getAvailableBots();
+	showAllBots(bots);
+	chosenBot = await askBot(bots);
 	const browser = await initBrowser();
 	const page = (await browser.pages())[0];
 	let jendela = await page.evaluate(() => document.defaultView);
@@ -72,9 +94,9 @@ const askTurn = async (agent: ChessAgentInterface) => {
 		await page.setViewport({ width: jendela.innerWidth, height: jendela.innerHeight });
 	}
 	let agent = new ChesscomAgent(page);
-	console.log(`Playing against ${bot.name}, rating: ${bot.elo}`);
+	console.log(`Playing against ${chosenBot.name}, rating: ${chosenBot.elo}`);
 	try {
-		let state = await agent.playComputer(bot);
+		let state = await agent.playComputer(chosenBot);
 		if (state == AgentState.TakingTurn) {
 			await askTurn(agent);
 		}
@@ -87,6 +109,6 @@ const askTurn = async (agent: ChessAgentInterface) => {
 	} finally {
 		agent.dispose();
 		browser.close();
-
+		console.info("Quitting...");
 	}
 })();
