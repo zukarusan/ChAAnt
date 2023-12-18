@@ -49,7 +49,6 @@ export class ChesscomAgent implements ChessAgentInterface {
                 if (pieceSample == null) {
                     throw `Cannot find targeted piece: ${square.notation}`;
                 }
-                debugger;
                 let squareLength = pieceSample.clientWidth;
                 let halfX = squareLength * await getRandomHalf(0.1, 0.9);
                 let halfY = squareLength * await getRandomHalf(0.1, 0.9);
@@ -116,7 +115,6 @@ export class ChesscomAgent implements ChessAgentInterface {
                 board.dispatchEvent(dragbegin);
                 board.dispatchEvent(dragend);
             }), bgSqr, enSqr, this.agentMoveNumber!);
-
             if (promoteTo !== undefined) {
                 await this.page.waitForSelector(`div[class*=promotion] > .w${promoteTo}`).then(async (piece)=> {
                     await piece?.click();
@@ -140,6 +138,7 @@ export class ChesscomAgent implements ChessAgentInterface {
         let from: string;
         let promoteTo: PieceNotation | undefined;
         let sanitizedMove = move.trim().replace(/\s*/, "");
+        let isPawnPromoting: boolean;
         if (AgentState.TakingTurn != this.state) {
             await this.waitTurn().then((state)=> {
                 if (state != AgentState.TakingTurn) {
@@ -165,6 +164,7 @@ export class ChesscomAgent implements ChessAgentInterface {
             piece = (rMove[1]?.toLowerCase() ?? PieceNotation.Pawn) as PieceNotation;
             from = rMove[2].toLowerCase();
             to = rMove[3].toLowerCase();
+            isPawnPromoting = (rMove[4] !== undefined);
             promoteTo = (rMove[5]?.toLowerCase()) as PieceNotation | undefined;
         } catch(err) {
             throw `Invalid chess notation move: ${move}`
@@ -178,7 +178,6 @@ export class ChesscomAgent implements ChessAgentInterface {
                 if (!agentColor) {
                     throw "Could not determine whether playing as black or white";
                 }
-                debugger;
                 pieces.forEach((pc)=>{
                     let legalMvsPc: Array<string> = board.game.getLegalMovesForSquare(pc.square)
                     if (pc.type == piece && legalMvsPc.includes(to) && pc.color == agentColor) {
@@ -201,6 +200,10 @@ export class ChesscomAgent implements ChessAgentInterface {
                 });
                 return [legalPieces[0].square, to];
             }, piece, from, to);
+            
+            if (isPawnPromoting && undefined === promoteTo) {
+                throw "Promotion piece must be specified";
+            }
             return {
                 "from": Square.square(squares[0]),
                 "to": Square.square(squares[1]),
@@ -345,6 +348,36 @@ export class ChesscomAgent implements ChessAgentInterface {
         let state = board.state;
         return state.playingAs !== undefined && !state.isGameOver;
     }
+    private async listenForGameOver(): Promise<void> {
+        await this.page.waitForSelector("wc-chess-board");
+        return await this.page.evaluate(()=>new Promise<void>((resolve, reject)=>{
+            let board:any = document.querySelector("wc-chess-board");
+            if (null == board) {
+                throw "Chess board is not found";
+            }
+            let game = board.game;
+            let handler = function() {
+                if (game.isGameOver()) {
+                    let idx = (board.game.listeners as Array<Object>).indexOf(handler);
+                    if (idx > -1) {
+                        (board.game.listeners as Array<Object>).splice(idx, 1);
+                    }
+                    console.info("ChAAnt: Game Over");
+                    debugger;
+                    resolve();
+                }
+            };
+            game.listeners.push({
+                type: "ModeChanged", handler: handler
+            });
+        })).then(()=>{
+            this.playing = PlayState.NotPlaying;
+            this.state = AgentState.Idle;
+        }).catch((err)=>{
+            this.playing = PlayState.NotPlaying;
+            this.state = AgentState.BrowserPageOutOfReach;
+        });
+    }
     private async ensurePlaying(): Promise<void> {
         try {
             if (!await this.isPlaying()) {
@@ -430,6 +463,7 @@ export class ChesscomAgent implements ChessAgentInterface {
             await playBtn.dispose();
             await this.ensurePlaying();
             await this.evaluateBlackOrWhite();
+            this.listenForGameOver();
         } catch (error: any) {
             let state = AgentState.BrowserPageOutOfReach;
             if ((<any>Object).values(AgentState).includes(error)) {

@@ -1,6 +1,7 @@
 import { ChessAgentInterface } from "@agents/ChessAgentInterface";
 import { ChesscomAgent } from "@agents/chesscom/ChesscomAgent";
 import { AgentState } from "@components/AgentState";
+import { PlayState } from "@components/PlayState";
 import { Square } from "@components/Square";
 import { ComputerOptInterface } from "@components/computers/ComputerOptInterface";
 import { ChesscomComputerOpt } from "@components/computers/chesscom/ChesscomComputerOpt";
@@ -55,6 +56,9 @@ const askTurn = async (agent: ChessAgentInterface) => {
 	await askUntilQuit("Your move: ",  async ()=> {
 		await agent.waitTurn();
 	}, async (ans)=> {
+		if (agent.playingState != PlayState.NotPlaying) {
+			return false;
+		}
 		await agent.move(ans);
 		return true;
 	});
