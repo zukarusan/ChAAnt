@@ -25,7 +25,7 @@ const quitId: string = uuidv4();
 const ask = (prompt: string): Promise<string> =>  new Promise<string>((resolve, reject) =>  {
 	rlconsole.question(prompt, (answer) => {
 		let ans = answer.toLowerCase().trim();
-		if (ans == 'quit') {
+		if ('quit' == ans) {
 			reject(quitId);
 			return;
 		}
@@ -47,7 +47,7 @@ const askUntilQuit = async(prompt: string, beforeAsk: ()=>Promise<void>, onAnswe
 			}
 		} catch (err: any) {
 			quit = err == quitId;
-			if (!quit) console.error(`Invalid move! Reason: ${err}`);
+			if (!quit) console.error(`Invalid input! Reason: ${err}`);
 		}
 	} while(!quit);
 }
@@ -55,7 +55,7 @@ const askTurn = async (agent: ChessAgentInterface) => {
 	await askUntilQuit("Your move: ",  async ()=> {
 		await agent.waitTurn();
 	}, async (ans)=> {
-		agent.move(ans);
+		await agent.move(ans);
 		return true;
 	});
 } 
