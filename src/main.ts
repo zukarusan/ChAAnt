@@ -100,9 +100,11 @@ const askBot = async (bots: Array<ComputerOptInterface>): Promise<ComputerOptInt
 	let agent = new ChesscomAgent(page);
 	console.log(`Playing against ${chosenBot.name}, rating: ${chosenBot.elo}`);
 	try {
-		let state = await agent.playComputer(chosenBot);
-		if (state == AgentState.TakingTurn) {
-			await askTurn(agent);
+		while (agent.playingState == PlayState.NotPlaying) {
+			let state = await agent.playComputer(chosenBot);
+			if (state == AgentState.TakingTurn) {
+				await askTurn(agent);
+			}
 		}
 	} catch (err: any) {
 		if (err instanceof Array) {
