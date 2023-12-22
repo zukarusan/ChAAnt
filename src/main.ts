@@ -56,7 +56,7 @@ const askTurn = async (agent: ChessAgentInterface) => {
 	await askUntilQuit("Your move: ",  async ()=> {
 		await agent.waitTurn();
 	}, async (ans)=> {
-		if (agent.playingState != PlayState.NotPlaying) {
+		if (PlayState.NotPlaying == agent.playingState) {
 			return false;
 		}
 		await agent.move(ans);
@@ -111,8 +111,8 @@ const askBot = async (bots: Array<ComputerOptInterface>): Promise<ComputerOptInt
 			console.error("Error cause: ", err[0]);
 		}
 	} finally {
-		agent.dispose();
-		browser.close();
+		await agent.dispose();
+		await browser.close();
 		console.info("Quitting...");
 	}
 })();

@@ -351,9 +351,10 @@ export class ChesscomAgent implements ChessAgentInterface {
     private async listenForGameOver(): Promise<void> {
         await this.page.waitForSelector("wc-chess-board");
         return await this.page.evaluate(()=>new Promise<void>((resolve, reject)=>{
+            debugger;
             let board:any = document.querySelector("wc-chess-board");
             if (null == board) {
-                throw "Chess board is not found";
+                reject("Chess board is not found");
             }
             let game = board.game;
             let handler = function() {
@@ -363,7 +364,6 @@ export class ChesscomAgent implements ChessAgentInterface {
                         (board.game.listeners as Array<Object>).splice(idx, 1);
                     }
                     console.info("ChAAnt: Game Over");
-                    debugger;
                     resolve();
                 }
             };
