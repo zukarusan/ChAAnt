@@ -162,8 +162,8 @@ export class ChesscomAgent implements ChessAgentInterface {
                 }
             }
             piece = (rMove[1]?.toLowerCase() ?? PieceNotation.Pawn) as PieceNotation;
-            from = rMove[2].toLowerCase();
-            to = rMove[3].toLowerCase();
+            from = rMove[2]?.toLowerCase();
+            to = rMove[3]?.toLowerCase() ?? rMove[4]?.toLowerCase();
             isPawnPromoting = (rMove[4] !== undefined);
             promoteTo = (rMove[5]?.toLowerCase()) as PieceNotation | undefined;
         } catch(err) {
@@ -200,13 +200,15 @@ export class ChesscomAgent implements ChessAgentInterface {
                 });
                 return [legalPieces[0].square, to];
             }, piece, from, to);
-            
+            var fromSqr = Square.square(squares[0]);
+            var toSqr = Square.square(squares[1]);
+            isPawnPromoting ||= (PieceNotation.Pawn == piece && '8' == toSqr.rankNotation); 
             if (isPawnPromoting && undefined === promoteTo) {
                 throw "Promotion piece must be specified";
             }
             return {
-                "from": Square.square(squares[0]),
-                "to": Square.square(squares[1]),
+                "from": fromSqr,
+                "to": toSqr,
                 "promoteTo": promoteTo
             }
         } catch(err) {
@@ -374,7 +376,6 @@ export class ChesscomAgent implements ChessAgentInterface {
             this.playing = PlayState.NotPlaying;
             this.state = AgentState.Idle;
         }).catch((err)=>{
-            this.playing = PlayState.NotPlaying;
             this.state = AgentState.BrowserPageOutOfReach;
         });
     }

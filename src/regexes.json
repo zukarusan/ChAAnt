@@ -1,6 +1,6 @@
 {
     "regexes": {
-        "chess-notation-move": "^(?:(?:O-O(?:-O)?)|(?:([KQNBR])?((?:[a-h][1-8])?[a-h]?)x?([a-h][1-8]))|([a-h]8[=/\\(]?([KQNBR])\\)?))[+#]?$"
+        "chess-notation-move": "^(?:(?:O-O(?:-O)?)|(?:([KQNBR])?((?:[a-h][1-8])?[a-h]?)x?([a-h][1-8]))|(?:([a-h]8)[=/\\\\(]?([KQNBR])\\\\?))[+#]?$"
     },
     "tests": {
         "chess-notation-move": [
