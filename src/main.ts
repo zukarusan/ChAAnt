@@ -38,15 +38,15 @@ const ask = (prompt: string): Promise<string> =>  new Promise<string>((resolve, 
 		}
 	});
 });
-const askUntilQuit = async(prompt: string, beforeAsk: ()=>Promise<void>, onAnswer: (ans: string)=>Promise<boolean>) => {
+const askUntilQuit = async(prompt: string, beforeAsk: ()=>Promise<boolean>, onAnswer: (ans: string)=>Promise<boolean>) => {
 	let quit: boolean = false;
 	do {
 		try {
-			await beforeAsk();
-			let ans = await ask(prompt);
-			if (!await onAnswer(ans)) {
+			if (!await beforeAsk())
 				break;
-			}
+			let ans = await ask(prompt);
+			if (!await onAnswer(ans))
+				break;
 		} catch (err: any) {
 			quit = err == quitId;
 			if (!quit) console.error(`Invalid input! Reason: ${err}`);
@@ -55,7 +55,11 @@ const askUntilQuit = async(prompt: string, beforeAsk: ()=>Promise<void>, onAnswe
 }
 const askTurn = async (agent: ChessAgentInterface) => {
 	await askUntilQuit("Your move: ",  async ()=> {
+		if (PlayState.NotPlaying == agent.playingState) {
+			return false;
+		}
 		await agent.waitTurn();
+		return true;
 	}, async (ans)=> {
 		if (PlayState.NotPlaying == agent.playingState) {
 			return false;
@@ -74,7 +78,7 @@ const showAllBots = (bots: Array<ComputerOptInterface>) => {
 };
 const askBot = async (bots: Array<ComputerOptInterface>): Promise<ComputerOptInterface>  => {
 	let bot: ComputerOptInterface | undefined;
-	await askUntilQuit("Choose bot to play against: ", async()=> {}, async (ans)=> {
+	await askUntilQuit("Choose bot to play against: ", async ()=> true, async (ans)=> {
 		let choice = parseInt(ans);
 		if (choice < 1 || choice > bots.length) {
 			throw "Invalid choice. Choose the correct available bot"
@@ -88,10 +92,8 @@ const askBot = async (bots: Array<ComputerOptInterface>): Promise<ComputerOptInt
 	return bot;
 }
 (async () => {
-	let chosenBot: ComputerOptInterface;
 	let bots = await ChesscomComputerOpt.getAvailableBots();
-	showAllBots(bots);
-	chosenBot = await askBot(bots);
+	let chosenBot: ComputerOptInterface;
 	const browser = await initBrowser();
 	const page = (await browser.pages())[0];
 	let jendela = await page.evaluate(() => document.defaultView);
@@ -99,9 +101,11 @@ const askBot = async (bots: Array<ComputerOptInterface>): Promise<ComputerOptInt
 		await page.setViewport({ width: jendela.innerWidth, height: jendela.innerHeight });
 	}
 	let agent = new ChesscomAgent(page);
-	console.log(`Playing against ${chosenBot.name}, rating: ${chosenBot.elo}`);
 	try {
 		while (agent.playingState == PlayState.NotPlaying) {
+			showAllBots(bots);
+			chosenBot = await askBot(bots);
+			console.log(`Playing against ${chosenBot.name}, rating: ${chosenBot.elo}`);
 			let state = await agent.playComputer(chosenBot);
 			if (state == AgentState.TakingTurn) {
 				await askTurn(agent);

@@ -74,7 +74,12 @@ export class ChesscomAgent implements ChessAgentInterface {
                 }
             });
         }
-        
+        // ugly code, it throws error
+        await this.tryMoveBySquare(from, to, false, promoteTo);
+        this.agentMoveNumber! += 2;
+        return (this.state = AgentState.MovedWaitingTurn);
+    }
+    private async tryMoveBySquare(from: Square, to: Square, reloaded: boolean, promoteTo?: PieceNotation): Promise<void> {
         let board: ElementHandle<Element> | null = null;
         try {
             board = await this.page.$("wc-chess-board");
@@ -84,7 +89,11 @@ export class ChesscomAgent implements ChessAgentInterface {
             }
             let bgSqr = await this.resolveBoardSquare(board, from);
             let enSqr = await this.resolveBoardSquare(board, to);
-            await board.evaluate((board: Element | any, bgSqr, enSqr, moveNumber) => new Promise<void>((resolve, reject)=>{
+            let extraTimeout = 0;
+            if (promoteTo !== undefined) {
+                extraTimeout = 1000;
+            }
+            let movePromise = board.evaluate((board: Element | any, bgSqr, enSqr, moveNumber, extraTimeout) => new Promise<void>((resolve, reject)=>{
                 let dragbegin = new PointerEvent('pointerdown', { clientX: bgSqr[0], clientY: bgSqr[1], bubbles:true});
                 let dragend = new PointerEvent('pointerup', { clientX: enSqr[0], clientY: enSqr[1], bubbles:true});
                 const removeListener = (handler: ()=>void) => {
@@ -98,7 +107,7 @@ export class ChesscomAgent implements ChessAgentInterface {
                         return resolve();
                     }
                     return reject(-1);
-                }, 5000);
+                }, 5000+extraTimeout);
                 const handler = (): boolean => {
                     if (board.game.getLastMove().moveNumber >= moveNumber) {
                         clearTimeout(timeoutId);
@@ -114,23 +123,26 @@ export class ChesscomAgent implements ChessAgentInterface {
                 });
                 board.dispatchEvent(dragbegin);
                 board.dispatchEvent(dragend);
-            }), bgSqr, enSqr, this.agentMoveNumber!);
+            }), bgSqr, enSqr, this.agentMoveNumber!, extraTimeout);
             if (promoteTo !== undefined) {
                 await this.page.waitForSelector(`div[class*=promotion] > .w${promoteTo}`).then(async (piece)=> {
                     await piece?.click();
                 });
             }
+            await movePromise;
         } catch (err: any) {
-            if (-1 == err) {
+            if (-1 == err && !reloaded) {
                 await this.page.reload();
+                await this.page.waitForNavigation();
+                // Recursive
+                return await this.tryMoveBySquare(from, to, true, promoteTo);
+            } else if (-1 == err) {
                 err = "Agent making a move times out";
             }
             throw [err, (this.state = AgentState.MovedIllegal)] as [any, AgentState]; // TODO handle better illegal move
         } finally {
             await board?.dispose();
         }
-        this.agentMoveNumber! += 2;
-        return (this.state = AgentState.MovedWaitingTurn);
     }
     public async evalMove(move: string): Promise<{"from": Square, "to": Square, "promoteTo": PieceNotation | undefined}> {
         let piece: PieceNotation;
@@ -167,7 +179,7 @@ export class ChesscomAgent implements ChessAgentInterface {
             isPawnPromoting = (rMove[4] !== undefined);
             promoteTo = (rMove[5]?.toLowerCase()) as PieceNotation | undefined;
         } catch(err) {
-            throw `Invalid chess notation move: ${move}`
+            throw `Invalid chess notation move: ${move}`;
         }
         try {
             let squares = await this.executeOnBoardElem((board, piece: PieceNotation, from: string, to: string): [string, string]=>{
@@ -376,6 +388,9 @@ export class ChesscomAgent implements ChessAgentInterface {
             this.playing = PlayState.NotPlaying;
             this.state = AgentState.Idle;
         }).catch((err)=>{
+            if (PlayState.NotPlaying != this.playing) {
+                this.listenForGameOver();
+            }
             this.state = AgentState.BrowserPageOutOfReach;
         });
     }
