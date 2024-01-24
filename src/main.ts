@@ -85,29 +85,76 @@ const askBot = async (bots: Array<ComputerOptInterface>): Promise<ComputerOptInt
 		}
 		bot = bots[choice-1];
 		return false;
-	})
+	});
 	if (undefined === bot) {
 		throw "No chosen bot";
 	}
 	return bot;
 }
+const matches = ["Vs. Computer", "Rapid", "Blitz", "Bullet", "30 mins"];
+const askGame = async (): Promise<1 | 2 | 3 | 4 | 5> => {
+	console.info("Chess game automation")
+	console.info("========================");
+	matches.forEach((match, idx)=> {
+		console.info(`${idx+1}. ${match}`);
+	});
+	console.info();
+	let matchMode: 1 | 2 | 3 | 4 | 5 | undefined;
+	await askUntilQuit("Choose match: ", async ()=> true, async (ans)=> {
+		let choice = parseInt(ans);
+		if (choice < 1 || choice > matches.length) {
+			throw "Invalid choice. Choose the correct match option"
+		}
+		matchMode = choice as 1 | 2 | 3 | 4 | 5;
+		return false;
+	});
+	if (undefined === matchMode) {
+		throw "No chosen match mode";
+	}
+	return matchMode;
+}
+const playComputer = async (agent: ChessAgentInterface, bots: ComputerOptInterface[]) => {
+	showAllBots(bots);
+	let chosenBot = await askBot(bots);
+	console.log(`Playing against ${chosenBot.name}, rating: ${chosenBot.elo}`);
+	return await agent.playComputer(chosenBot);
+	
+}
 (async () => {
 	let bots = await ChesscomComputerOpt.getAvailableBots();
-	let chosenBot: ComputerOptInterface;
 	const browser = await initBrowser();
 	const page = (await browser.pages())[0];
 	let jendela = await page.evaluate(() => document.defaultView);
 	if (jendela != null) {
 		await page.setViewport({ width: jendela.innerWidth, height: jendela.innerHeight });
 	}
-	let agent = new ChesscomAgent(page);
+	let agent: ChessAgentInterface;
+	agent = new ChesscomAgent(page);
 	try {
 		while (agent.playingState == PlayState.NotPlaying) {
-			showAllBots(bots);
-			chosenBot = await askBot(bots);
-			console.log(`Playing against ${chosenBot.name}, rating: ${chosenBot.elo}`);
-			let state = await agent.playComputer(chosenBot);
+			let choice = await askGame();
+			let state: AgentState;
+			switch(choice) {
+				case 1:
+					state = await playComputer(agent, bots);
+					break;
+				case 2:
+					state = await agent.playRapid();
+					break;
+				case 3:
+					state = await agent.playBlitz();
+					break;
+				case 4:
+					state = await agent.playBullet();
+					break;
+				case 5:
+					state = await agent.playClassical();
+					break;
+			}
 			if (state == AgentState.TakingTurn) {
+				await askTurn(agent);
+			} else if (state == AgentState.FirstWaitingTurn) {
+				await agent.waitTurn();
 				await askTurn(agent);
 			}
 		}

@@ -309,6 +309,15 @@ export class ChesscomAgent implements ChessAgentInterface {
     get lastMove(): Promise<string> {
         throw "lastMove is not implemented";
     }
+    public async isGuest(): Promise<boolean> {
+        if (!this.page.url().includes("chess.com")) {
+            throw "Page is not on chess.com";
+        }
+        await this.page.waitForSelector('div[data-nav-top]');
+        return await this.page.evaluate((): boolean => {
+            return null != document.querySelector("a.login");
+        })
+    }
     private async evaluateBlackOrWhite(): Promise<void> {
         this.asBlack = await this.executeOnBoardElem((board: Element | any) => {
             return 2 == (board.state.playingAs as number);
@@ -318,6 +327,7 @@ export class ChesscomAgent implements ChessAgentInterface {
     private async executeOnBoardElem<T>(promise: (board: Element | any, ...args: any) => T, ...evalArgs: any): Promise<T> {
         let board: ElementHandle<Element> | null = null;
         try {
+            await this.page.waitForSelector("wc-chess-board");
             board = await this.page.$("wc-chess-board");
             if (null == board) {
                 throw "Board not found";
@@ -331,12 +341,17 @@ export class ChesscomAgent implements ChessAgentInterface {
         }
     }
     private async isPlaying(): Promise<boolean> {
-        return await this.executeOnBoardElem(ChesscomAgent.evalPlaying);
+        let [resignLabel, abortLabel] = await this.executeOnBoardElem(()=> 
+            [(chesscom_translations.messages)["Resign"] as string ?? "Resign", 
+                (chesscom_translations.messages)["Abort"] as string ?? "Abort"]
+        );
+        return null != await this.page.waitForSelector(`#board-layout-sidebar button[aria-label='${resignLabel}'],button[aria-label='${abortLabel}']`)
     }
     private static async evalPlaying(board: ElementHandle<Element> | any): Promise<boolean> {
         const resignLabel: string = (chesscom_translations.messages)["Resign"] as string ?? "Resign";
+        const abortLabel: string = (chesscom_translations.messages)["Abort"] as string ?? "Abort";
         const checkObserve = (resolve: ResolveType<void>, mut: MutationRecord[], timeoutId: NodeJS.Timeout, ob: MutationObserver) => {
-            if (mut.filter((m)=>m.addedNodes).length > 0 && document.querySelector(`#board-layout-sidebar button[aria-label='${resignLabel}']`)) {    
+            if (mut.filter((m)=>m.addedNodes).length > 0 && document.querySelector(`#board-layout-sidebar button[aria-label='${resignLabel}'],button[aria-label='${abortLabel}']`)) {    
                 clearTimeout(timeoutId);
                 ob.disconnect();
                 resolve();
@@ -349,10 +364,10 @@ export class ChesscomAgent implements ChessAgentInterface {
             var observer = new MutationObserver((mut,ob)=>checkObserve(resolve, mut, timeoutId, ob));
             let node = document.querySelector("#board-layout-sidebar button.resign-button-component");
             node = node ?? ((): Element | null => {
-                return document.querySelector(`#board-layout-sidebar button[aria-label='${resignLabel}']`);
+                return document.querySelector(`#board-layout-sidebar button[aria-label='${resignLabel}'],button[aria-label='${abortLabel}']`);
             })();
             if (null == node) {
-                let panel = document.querySelector("#board-layout-sidebar") ?? reject("Board not found");
+                let panel = document.querySelector("#board-layout-sidebar") ?? reject("Can't eval playing. Resign label not detected");
                 observer.observe(panel!, { childList: true });
             } else {
                 resolve();
@@ -396,6 +411,7 @@ export class ChesscomAgent implements ChessAgentInterface {
     }
     private async ensurePlaying(): Promise<void> {
         try {
+            await this.page.waitForSelector("#board-layout-sidebar");
             if (!await this.isPlaying()) {
                 this.state = AgentState.IdleIllegalPlay;
                 throw "Agent is not detected to be playing";
@@ -405,7 +421,81 @@ export class ChesscomAgent implements ChessAgentInterface {
             throw err;
         }
     }
-    async playComputer(computer: ComputerOptInterface): Promise<AgentState> {
+    private async selectTimeControl(timeControlSelector: string) {
+        await this.page.waitForSelector(`button[data-cy='new-game-time-selector-button']`)
+        let timeCombo = await this.page.$(`button[data-cy='new-game-time-selector-button']`);
+        if (timeCombo == null) {
+            throw "No time control available";
+        }
+        await timeCombo.click();
+        await this.page.waitForSelector(`button[data-cy='${timeControlSelector}']`);
+        await (await this.page.$(`button[data-cy='${timeControlSelector}']`))?.click()
+    }
+    private async playOnline(executeConfig: (...args: any)=>Promise<void>, ...args: any) {
+        try {
+            await this.page.goto("https://www.chess.com/play/online");
+            await this.page.waitForSelector(`button[data-cy='new-game-index-play']`);
+            
+            await executeConfig(...args);
+            let playTitle = await this.page.evaluate(() => new Promise<string>((resolve)=>{
+                let timeoutId = setTimeout(() => {
+                    throw "Finding play button times out";
+                }, 10200);
+                let playTitle = chesscom_translations.messages.Play as string ?? "Play";
+                var x = new MutationObserver(function (_mut, ob) {
+                    if (document.querySelector(`button[data-cy='new-game-index-play']`)) {
+                        clearTimeout(timeoutId);
+                        ob.disconnect();
+                        resolve(playTitle);
+                    }
+                });
+                let btn = document.querySelector(`button[data-cy='new-game-index-play']`);
+                if (btn == null) {
+                    let node = document.querySelector("#board-layout-sidebar");
+                    if (node != null)  {
+                        x.observe(node , { childList: true });
+                    } else {
+                        throw "Play button not found";
+                    }
+                } else {
+                    clearTimeout(timeoutId);
+                    resolve(playTitle);
+                }
+            }));
+            let playBtn = await this.page.$(`button[data-cy='new-game-index-play']`);
+            if (playBtn == null) {
+                throw "No play button detected";
+            }
+            await playBtn.click();
+            if (await this.isGuest()) {
+                let popup = await this.page.evaluate(()=> {
+                    return undefined !== localStorage.playNewGameSettings;
+                });
+                if (popup)
+                    await this.page.waitForSelector("#guest-button");
+                await this.page.evaluate(()=>{{
+                    let guestBtn = document.getElementById("guest-button");
+                    if (null != guestBtn) {
+                        guestBtn.click();
+                    }
+                }});
+            }
+            await playBtn.dispose();
+            await this.ensurePlaying();
+            await this.evaluateBlackOrWhite();
+            this.listenForGameOver();
+        } catch (error: any) {
+            let state = AgentState.BrowserPageOutOfReach;
+            if ((<any>Object).values(AgentState).includes(error)) {
+                state = error as AgentState;
+            }
+            throw ([error, (this.state = state)] as [unknown, AgentState]);
+        }
+        this.agentMoveNumber = this.asBlack! ? 1 : 0;
+        this.playing = PlayState.AgainstComputer;
+        return (this.state = this.asBlack! ? AgentState.FirstWaitingTurn : AgentState.TakingTurn);
+    }
+    public async playComputer(computer: ComputerOptInterface): Promise<AgentState> {
         try {
             await this.page.goto("https://www.chess.com/play/computer");
             
@@ -447,18 +537,19 @@ export class ChesscomAgent implements ChessAgentInterface {
             if (configState != ComputerConfigState.Chosen) {
                 throw "Bot was not selected";
             }
-            await this.page.evaluate(() => new Promise<void>((resolve)=>{
+            let playTitle = await this.page.evaluate(() => new Promise<string>((resolve)=>{
                 let timeoutId = setTimeout(() => {
                     throw "Finding play button times out";
                 }, 10200);
+                let playTitle = chesscom_translations.messages.Play as string ?? "Play";
                 var x = new MutationObserver(function (_mut, ob) {
-                    if (document.querySelector("#board-layout-sidebar button[title='Play']")) {
+                    if (document.querySelector(`#board-layout-sidebar button[title='${playTitle}']`)) {
                         clearTimeout(timeoutId);
                         ob.disconnect();
-                        resolve();
+                        resolve(playTitle);
                     }
                 });
-                let btn = document.querySelector("#board-layout-sidebar button[title='Play']");
+                let btn = document.querySelector(`#board-layout-sidebar button[title='${playTitle}']`);
                 if (btn == null) {
                     let node = document.querySelector("#board-layout-sidebar");
                     if (node != null)  {
@@ -468,10 +559,10 @@ export class ChesscomAgent implements ChessAgentInterface {
                     }
                 } else {
                     clearTimeout(timeoutId);
-                    resolve();
+                    resolve(playTitle);
                 }
             }));
-            let playBtn = await this.page.$("#board-layout-sidebar button[title='Play']");
+            let playBtn = await this.page.$(`#board-layout-sidebar button[title='${playTitle}']`);
             if (playBtn == null) {
                 throw "No play button detected";
             }
@@ -491,19 +582,27 @@ export class ChesscomAgent implements ChessAgentInterface {
         this.playing = PlayState.AgainstComputer;
         return (this.state = AgentState.TakingTurn);
     }
-    async playRapid(...args: any): Promise<AgentState> {
-        throw new Error("Method not implemented.");
+    public async playRapid(...args: any): Promise<AgentState> {
+        return await this.playOnline(async (...args) => {
+            await this.selectTimeControl("time-selector-category-600");
+        }, ...args);
     }
-    async playBlitz(...args: any): Promise<AgentState> {
-        throw new Error("Method not implemented.");
+    public async playBlitz(...args: any): Promise<AgentState> {
+        return await this.playOnline(async (...args) => {
+            await this.selectTimeControl("time-selector-category-300");
+        }, ...args);
     }
-    async playBullet(...args: any): Promise<AgentState> {
-        throw new Error("Method not implemented.");
+    public async playBullet(...args: any): Promise<AgentState> {
+        return await this.playOnline(async (...args) => {
+            await this.selectTimeControl("time-selector-category-60|1");
+        }, ...args);
     }
-    async playClassical(...args: any): Promise<AgentState> {
-        throw new Error("Method not implemented.");
+    public async playClassical(...args: any): Promise<AgentState> {
+        return await this.playOnline(async (...args) => {
+            await this.selectTimeControl("time-selector-category-1800");
+        }, ...args);
     }
-    async dispose(): Promise<void> {
+    public async dispose(): Promise<void> {
         const page = this.page
         ChesscomAgent.UNIQUE_PAGES.delete(this.page);
         await page.close();
