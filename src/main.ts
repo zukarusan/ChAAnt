@@ -48,7 +48,15 @@ const askUntilQuit = async(prompt: string, beforeAsk: ()=>Promise<boolean>, onAn
 			if (!await onAnswer(ans))
 				break;
 		} catch (err: any) {
-			quit = err == quitId;
+			quit = err == quitId || err;
+			if (err instanceof Array && err.length >= 2 && err[1] == AgentState.BrowserPageOutOfReach) {
+				console.error(`Browser out of reach: ${err}`);
+				quit = true;
+			}
+			if (err == AgentState.BrowserPageOutOfReach) {
+				quit = true;
+				console.error(err);
+			}
 			if (!quit) console.error(`Invalid input! Reason: ${err}`);
 		}
 	} while(!quit);
@@ -120,6 +128,20 @@ const playComputer = async (agent: ChessAgentInterface, bots: ComputerOptInterfa
 	return await agent.playComputer(chosenBot);
 	
 }
+const selectMode = async (agent: ChessAgentInterface, choice: 1 | 2 | 3 | 4 | 5, bots: ComputerOptInterface[]) => {
+	switch(choice) {
+		case 1:
+			return await playComputer(agent, bots);
+		case 2:
+			return await agent.playRapid();
+		case 3:
+			return await agent.playBlitz();
+		case 4:
+			return await agent.playBullet();
+		case 5:
+			return await agent.playClassical();
+	}
+}
 (async () => {
 	let bots = await ChesscomComputerOpt.getAvailableBots();
 	const browser = await initBrowser();
@@ -133,27 +155,10 @@ const playComputer = async (agent: ChessAgentInterface, bots: ComputerOptInterfa
 	try {
 		while (agent.playingState == PlayState.NotPlaying) {
 			let choice = await askGame();
-			let state: AgentState;
-			switch(choice) {
-				case 1:
-					state = await playComputer(agent, bots);
-					break;
-				case 2:
-					state = await agent.playRapid();
-					break;
-				case 3:
-					state = await agent.playBlitz();
-					break;
-				case 4:
-					state = await agent.playBullet();
-					break;
-				case 5:
-					state = await agent.playClassical();
-					break;
-			}
-			if (state == AgentState.TakingTurn) {
+			let state: AgentState = await selectMode(agent, choice, bots);
+			if (AgentState.TakingTurn == state) {
 				await askTurn(agent);
-			} else if (state == AgentState.FirstWaitingTurn) {
+			} else if (AgentState.FirstWaitingTurn == state) {
 				await agent.waitTurn();
 				await askTurn(agent);
 			}

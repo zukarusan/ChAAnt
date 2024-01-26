@@ -498,7 +498,7 @@ export class ChesscomAgent implements ChessAgentInterface {
     public async playComputer(computer: ComputerOptInterface): Promise<AgentState> {
         try {
             await this.page.goto("https://www.chess.com/play/computer");
-            
+
             await this.page.$("div[id^='placeholder-'] button[aria-label='Close']").then(async (btn) => {
                 await btn?.click();
                 await btn?.dispose();
@@ -506,7 +506,7 @@ export class ChesscomAgent implements ChessAgentInterface {
             await this.page.evaluate(() => new Promise<void>((resolve)=>{
                 let timeoutId = setTimeout(() => {
                     throw "Asserting modal popup times out";
-                }, 10200);
+                }, 10000);
                 var x = new MutationObserver(function (mut, ob) {
                     if (mut[0].removedNodes) {
                         clearTimeout(timeoutId);
