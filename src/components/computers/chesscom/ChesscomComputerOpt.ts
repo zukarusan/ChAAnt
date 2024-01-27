@@ -58,7 +58,7 @@ export class ChesscomComputerOpt implements ComputerOptInterface {
     get elo(): number {
         return this._elo;
     }
-    async selectMe(page: Page): Promise<ComputerConfigState> {
+    async selectMe(page: Page, asBlack: boolean): Promise<ComputerConfigState> {
         let init = await ChesscomComputerOpt.initialized;
         if (!init) {
             throw "Cannot select because no bots are available";
@@ -67,17 +67,24 @@ export class ChesscomComputerOpt implements ComputerOptInterface {
             throw "Page is not within computer mode";
         }
         let botBtn = await page.$(`div[data-cy='${this._name}'][data-bot-classification='${this._group}']`);
-        if (botBtn == null) {
+        if (null == botBtn) {
             throw `Bot ${this._name} is not found`;
         }
         await botBtn.click();
         await botBtn.dispose();
         let chooseBtn = await page.$("#board-layout-sidebar button[title='Choose']");
-        if (chooseBtn == null) {
+        if (null == chooseBtn) {
             throw "There is no choose button";
         }
         await chooseBtn.click();
         await chooseBtn.dispose();
+
+        let colorBtn = await page.waitForSelector(`div[data-cy="${asBlack ? 'black' : 'white'}"] input[name="colorSelectionButton"]`);
+        if (null == colorBtn) {
+            throw "There is no color button";
+        }
+        await colorBtn.click();
+        await colorBtn.dispose();
 
         await page.evaluate(() => new Promise<void>((resolve)=>{
             let timeoutId = setTimeout(() => {

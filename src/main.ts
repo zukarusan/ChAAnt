@@ -99,6 +99,18 @@ const askBot = async (bots: Array<ComputerOptInterface>): Promise<ComputerOptInt
 	}
 	return bot;
 }
+const askIfPlayAsBlack = async (): Promise<boolean>  => {
+	let asBlack: boolean = false;
+	await askUntilQuit("Play as black (y/n)? ", async ()=> true, async (ans)=> {
+		ans = ans.toLowerCase();
+		if (ans.length <= 0 || !["y", "n"].includes(ans[0])) {
+			throw "Can't infer answer"
+		}
+		asBlack = ans[0] == "y";
+		return false;
+	});
+	return asBlack;
+}
 const matches = ["Vs. Computer", "Rapid", "Blitz", "Bullet", "30 mins"];
 const askGame = async (): Promise<1 | 2 | 3 | 4 | 5> => {
 	console.info("Chess game automation")
@@ -124,8 +136,9 @@ const askGame = async (): Promise<1 | 2 | 3 | 4 | 5> => {
 const playComputer = async (agent: ChessAgentInterface, bots: ComputerOptInterface[]) => {
 	showAllBots(bots);
 	let chosenBot = await askBot(bots);
-	console.log(`Playing against ${chosenBot.name}, rating: ${chosenBot.elo}`);
-	return await agent.playComputer(chosenBot);
+	let asBlack = await askIfPlayAsBlack();
+	console.log(`Playing against ${chosenBot.name}, rating: ${chosenBot.elo}, as ${asBlack ? "Black" : "white"}`);
+	return await agent.playComputer(chosenBot, asBlack);
 	
 }
 const selectMode = async (agent: ChessAgentInterface, choice: 1 | 2 | 3 | 4 | 5, bots: ComputerOptInterface[]) => {

@@ -495,14 +495,14 @@ export class ChesscomAgent implements ChessAgentInterface {
         this.playing = PlayState.AgainstComputer;
         return (this.state = this.asBlack! ? AgentState.FirstWaitingTurn : AgentState.TakingTurn);
     }
-    public async playComputer(computer: ComputerOptInterface): Promise<AgentState> {
+    public async playComputer(computer: ComputerOptInterface, playAsBlack: boolean): Promise<AgentState> {
         try {
             await this.page.goto("https://www.chess.com/play/computer");
 
-            await this.page.$("div[id^='placeholder-'] button[aria-label='Close']").then(async (btn) => {
+            await this.page.$$("button[aria-label='Close']").then((buttons) => buttons.forEach(async (btn)=>{
                 await btn?.click();
                 await btn?.dispose();
-            });
+            }));
             await this.page.evaluate(() => new Promise<void>((resolve)=>{
                 let timeoutId = setTimeout(() => {
                     throw "Asserting modal popup times out";
@@ -533,7 +533,7 @@ export class ChesscomAgent implements ChessAgentInterface {
                     throw "Cannot find bot selection";
                 await selection?.dispose();
             });
-            let configState = await computer.selectMe(this.page);
+            let configState = await computer.selectMe(this.page, playAsBlack);
             if (configState != ComputerConfigState.Chosen) {
                 throw "Bot was not selected";
             }

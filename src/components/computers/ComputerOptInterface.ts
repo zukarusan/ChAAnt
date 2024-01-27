@@ -5,6 +5,6 @@ export interface ComputerOptInterface {
     get name(): string;
     get elo(): number;
 
-    selectMe(page: Page): Promise<ComputerConfigState>;
+    selectMe(page: Page, asBlack: boolean): Promise<ComputerConfigState>;
     configure(...args: any): Promise<ComputerConfigState>;
 }

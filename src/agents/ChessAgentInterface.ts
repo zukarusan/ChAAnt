@@ -13,7 +13,7 @@ export interface ChessAgentInterface {
     get blackOrWhite(): "black" | "white";
     get lastMove(): Promise<string>;
     
-    playComputer(computer: ComputerOptInterface): Promise<AgentState>;
+    playComputer(computer: ComputerOptInterface, asBlack: boolean): Promise<AgentState>;
     playRapid(...args: any): Promise<AgentState>;
     playBlitz(...args: any): Promise<AgentState>;
     playBullet(...args: any): Promise<AgentState>;
