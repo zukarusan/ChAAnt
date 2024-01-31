@@ -320,7 +320,7 @@ export class ChesscomAgent implements ChessAgentInterface {
     }
     private async evaluateBlackOrWhite(): Promise<void> {
         this.asBlack = await this.executeOnBoardElem((board: Element | any) => {
-            return 2 == (board.state.playingAs as number);
+            return 2 == (board.state.playingAs as number) || 2 == board.game.getPlayingAs();
         });
         Promise.resolve();
     }

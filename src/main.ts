@@ -72,7 +72,9 @@ const askTurn = async (agent: ChessAgentInterface) => {
 		if (PlayState.NotPlaying == agent.playingState) {
 			return false;
 		}
-		await agent.move(ans);
+		await agent.move(ans).catch(err=>{
+			console.error(`Invalid move! Reason: ${err}`)
+		});
 		return true;
 	});
 } 
