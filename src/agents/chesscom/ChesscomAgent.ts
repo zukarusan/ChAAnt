@@ -18,6 +18,7 @@ export class ChesscomAgent implements ChessAgentInterface {
     private playing: PlayState;
     private asBlack?: boolean;
     private agentMoveNumber?: number;
+    private gameOverHandler: ()=> void;
     private static castles = {"o-o": { "white": ["e1", "g1"], "black": ["e8", "g8"] }, "o-o-o": { "white": ["e1", "c1"], "black": ["e8", "c8"] }}
     public constructor(page: Page) {
         if (ChesscomAgent.UNIQUE_PAGES.has(page)) {
@@ -28,7 +29,11 @@ export class ChesscomAgent implements ChessAgentInterface {
         this.playing = PlayState.NotPlaying;
         this.asBlack = undefined;
         ChesscomAgent.UNIQUE_PAGES.add(page);
+        this.gameOverHandler = ()=> {};
         this.initAsync();
+    }
+    set onGameOver(handler: () => void) {
+        this.gameOverHandler = handler;
     }
     private async initAsync() {
         await this.page.exposeFunction("getRandomHalf", (max:number, min:number)=> {
@@ -380,14 +385,13 @@ export class ChesscomAgent implements ChessAgentInterface {
     private async listenForGameOver(): Promise<void> {
         await this.page.waitForSelector("wc-chess-board");
         return await this.page.evaluate(()=>new Promise<void>((resolve, reject)=>{
-            debugger;
             let board:any = document.querySelector("wc-chess-board");
             if (null == board) {
                 reject("Chess board is not found");
             }
             let game = board.game;
             let handler = function() {
-                if (game.isGameOver()) {
+                if (undefined === game.getPlayingAs()) {
                     let idx = (board.game.listeners as Array<Object>).indexOf(handler);
                     if (idx > -1) {
                         (board.game.listeners as Array<Object>).splice(idx, 1);
@@ -396,17 +400,20 @@ export class ChesscomAgent implements ChessAgentInterface {
                     resolve();
                 }
             };
-            game.listeners.push({
+            game.listeners.unshift({
                 type: "ModeChanged", handler: handler
             });
         })).then(()=>{
             this.playing = PlayState.NotPlaying;
             this.state = AgentState.Idle;
-        }).catch((err)=>{
-            if (PlayState.NotPlaying != this.playing) {
-                this.listenForGameOver();
+            this.gameOverHandler();
+        }).catch(async (err)=>{
+            let boardExist = null != await this.page.$("wc-chess-board");
+            if (PlayState.NotPlaying != this.playing && this.page.url().includes("chess.com") && boardExist)  {
+                await this.listenForGameOver();
+            } else {
+                this.state = AgentState.BrowserPageOutOfReach;
             }
-            this.state = AgentState.BrowserPageOutOfReach;
         });
     }
     private async ensurePlaying(): Promise<void> {

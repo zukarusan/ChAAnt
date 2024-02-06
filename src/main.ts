@@ -168,15 +168,30 @@ const selectMode = async (agent: ChessAgentInterface, choice: 1 | 2 | 3 | 4 | 5,
 	let agent: ChessAgentInterface;
 	agent = new ChesscomAgent(page);
 	try {
+		let turnPromise: Promise<void> = Promise.resolve();
 		while (agent.playingState == PlayState.NotPlaying) {
-			let choice = await askGame();
-			let state: AgentState = await selectMode(agent, choice, bots);
-			if (AgentState.TakingTurn == state) {
-				await askTurn(agent);
-			} else if (AgentState.FirstWaitingTurn == state) {
-				await agent.waitTurn();
-				await askTurn(agent);
-			}
+			await new Promise<void>(async (resolve, reject) => {
+				let choice = await askGame();
+				let state: AgentState = await selectMode(agent, choice, bots);
+				agent.onGameOver = ()=> {
+					reject("END");
+				};
+				if (AgentState.TakingTurn == state) {
+					turnPromise = askTurn(agent);
+					await turnPromise;
+				} else if (AgentState.FirstWaitingTurn == state) {
+						await agent.waitTurn();
+						await askTurn(agent);
+					await turnPromise;
+				}
+				resolve();
+			}).catch((err)=>{
+				if ("END" == err) {
+					console.info("Game Ends.");
+				} else {
+					throw err;
+				}
+			});
 		}
 	} catch (err: any) {
 		if (err instanceof Array) {

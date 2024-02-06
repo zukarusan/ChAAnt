@@ -12,6 +12,8 @@ export interface ChessAgentInterface {
     get playingState(): PlayState;
     get blackOrWhite(): "black" | "white";
     get lastMove(): Promise<string>;
+
+    set onGameOver(handler: ()=> void);
     
     playComputer(computer: ComputerOptInterface, asBlack: boolean): Promise<AgentState>;
     playRapid(...args: any): Promise<AgentState>;
