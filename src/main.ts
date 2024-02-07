@@ -21,11 +21,11 @@ const rlconsole = readline.createInterface({
 	input: process.stdin,
 	output: process.stdout
 });
-
+var aborter = new AbortController();
 const { v4: uuidv4 } = require('uuid');
 const quitId: string = uuidv4();
 const ask = (prompt: string): Promise<string> =>  new Promise<string>((resolve, reject) =>  {
-	rlconsole.question(prompt, (answer) => {
+	rlconsole.question(prompt, { signal: aborter.signal }, (answer) => {
 		let ans = answer.toLowerCase().trim();
 		if ('quit' == ans) {
 			reject(quitId);
@@ -168,26 +168,27 @@ const selectMode = async (agent: ChessAgentInterface, choice: 1 | 2 | 3 | 4 | 5,
 	let agent: ChessAgentInterface;
 	agent = new ChesscomAgent(page);
 	try {
-		let turnPromise: Promise<void> = Promise.resolve();
 		while (agent.playingState == PlayState.NotPlaying) {
 			await new Promise<void>(async (resolve, reject) => {
 				let choice = await askGame();
 				let state: AgentState = await selectMode(agent, choice, bots);
 				agent.onGameOver = ()=> {
+					aborter.abort();
+					aborter = new AbortController();
 					reject("END");
 				};
 				if (AgentState.TakingTurn == state) {
-					turnPromise = askTurn(agent);
-					await turnPromise;
+					await askTurn(agent);
 				} else if (AgentState.FirstWaitingTurn == state) {
-						await agent.waitTurn();
-						await askTurn(agent);
-					await turnPromise;
+					await agent.waitTurn();
+					await askTurn(agent);
 				}
 				resolve();
 			}).catch((err)=>{
 				if ("END" == err) {
+					console.info("----------");
 					console.info("Game Ends.");
+					console.info("----------");
 				} else {
 					throw err;
 				}
@@ -200,6 +201,7 @@ const selectMode = async (agent: ChessAgentInterface, choice: 1 | 2 | 3 | 4 | 5,
 			console.error("Error cause: ", err[0]);
 		}
 	} finally {
+		rlconsole.close();
 		await agent.dispose();
 		await browser.close();
 		console.info("Quitting...");

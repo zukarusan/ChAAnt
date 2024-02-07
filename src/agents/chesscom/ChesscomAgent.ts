@@ -252,8 +252,12 @@ export class ChesscomAgent implements ChessAgentInterface {
             }
             await board.evaluate((board: Element | any, moveNumber) => new Promise<void>((resolve, reject)=>{
                 if ((board.game.getLastMove()?.moveNumber ?? -1) + 1 >= moveNumber) {
+                    board.game.chaantGameOver = undefined;
                     return resolve();
                 }
+                board.game.chaantGameOver = () => {
+                    reject("GAMEOVER");
+                };
                 const handler = ():boolean => {
                     if ((board.game.getLastMove()?.moveNumber ?? -1) + 1 >= moveNumber) {
                         if (timeoutElem) 
@@ -262,6 +266,7 @@ export class ChesscomAgent implements ChessAgentInterface {
                             clearTimeout(timeoutTurning);
                         removeListener(handler);
                         resolve();
+                        board.game.chaantGameOver = undefined;
                         return true;
                     }
                     return false;
@@ -284,12 +289,17 @@ export class ChesscomAgent implements ChessAgentInterface {
                 let timeoutElem = setTimeout(()=> {
                     if ((board.game.getLastMove()?.moveNumber ?? -1) + 1 >= moveNumber) {
                         clearTimeout(timeoutTurning);
+                        board.game.chaantGameOver = undefined;
                         return resolve();
                     }
                 }, 5000);
                 handler();
+                
             }), this.agentMoveNumber!);
         } catch (err) {
+            if (err == "GAMEOVER") {
+                return (this.state = AgentState.Idle);
+            }
             throw [err, (this.state = AgentState.BrowserPageOutOfReach)] as [any, AgentState];
         } finally {
             await board?.dispose();
@@ -403,7 +413,17 @@ export class ChesscomAgent implements ChessAgentInterface {
             game.listeners.unshift({
                 type: "ModeChanged", handler: handler
             });
-        })).then(()=>{
+        })).then(async ()=>{
+            try {
+                let board = await this.page.waitForSelector("wc-chess-board");
+                await board?.evaluate((board: any)=>{
+                    if (board.game.chaantGameOver !== undefined && typeof board.game.chaantGameOver === 'function') {
+                        board.game.chaantGameOver();
+                    }
+                });
+            } catch(err) {
+
+            }
             this.playing = PlayState.NotPlaying;
             this.state = AgentState.Idle;
             this.gameOverHandler();
