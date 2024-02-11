@@ -66,7 +66,7 @@ export class ChesscomComputerOpt implements ComputerOptInterface {
         if (!page.url().includes("chess.com/play/computer")) {
             throw "Page is not within computer mode";
         }
-        let botBtn = await page.$(`div[data-cy='${this._name}'][data-bot-classification='${this._group}']`);
+        let botBtn = await page.waitForSelector(`div[data-cy='${this._name}'][data-bot-classification='${this._group}']`);
         if (null == botBtn) {
             throw `Bot ${this._name} is not found`;
         }

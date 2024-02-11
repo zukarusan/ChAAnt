@@ -115,7 +115,8 @@ const askIfPlayAsBlack = async (): Promise<boolean>  => {
 }
 const matches = ["Vs. Computer", "Rapid", "Blitz", "Bullet", "30 mins"];
 const askGame = async (): Promise<1 | 2 | 3 | 4 | 5> => {
-	console.info("Chess game automation")
+	console.info("========================");
+	console.info("Chess game automation");
 	console.info("========================");
 	matches.forEach((match, idx)=> {
 		console.info(`${idx+1}. ${match}`);
@@ -157,6 +158,34 @@ const selectMode = async (agent: ChessAgentInterface, choice: 1 | 2 | 3 | 4 | 5,
 			return await agent.playClassical();
 	}
 }
+const iterGame = async (agent: ChessAgentInterface, bots: ComputerOptInterface[])=> await new Promise<void>(async (resolve, reject) => {
+	let choice = await askGame();
+	await selectMode(agent, choice, bots).then(async (state)=>{
+		agent.onGameOver = ()=> {
+			aborter.abort();
+			aborter = new AbortController();
+			reject("END");
+		};
+		if (AgentState.TakingTurn == state) {
+			await askTurn(agent);
+		} else if (AgentState.FirstWaitingTurn == state) {
+			await agent.waitTurn();
+			await askTurn(agent);
+		}
+	}).catch(err=>{
+		reject(err);
+	});
+	resolve();
+}).catch((err)=>{
+	if ("END" == err) {
+		console.info("----------");
+		console.info("Game Ends.");
+		console.info("----------");
+	} else {
+		throw err;
+	}
+});
+
 (async () => {
 	let bots = await ChesscomComputerOpt.getAvailableBots();
 	const browser = await initBrowser();
@@ -167,43 +196,20 @@ const selectMode = async (agent: ChessAgentInterface, choice: 1 | 2 | 3 | 4 | 5,
 	}
 	let agent: ChessAgentInterface;
 	agent = new ChesscomAgent(page);
-	try {
-		while (agent.playingState == PlayState.NotPlaying) {
-			await new Promise<void>(async (resolve, reject) => {
-				let choice = await askGame();
-				let state: AgentState = await selectMode(agent, choice, bots);
-				agent.onGameOver = ()=> {
-					aborter.abort();
-					aborter = new AbortController();
-					reject("END");
-				};
-				if (AgentState.TakingTurn == state) {
-					await askTurn(agent);
-				} else if (AgentState.FirstWaitingTurn == state) {
-					await agent.waitTurn();
-					await askTurn(agent);
-				}
-				resolve();
-			}).catch((err)=>{
-				if ("END" == err) {
-					console.info("----------");
-					console.info("Game Ends.");
-					console.info("----------");
-				} else {
-					throw err;
-				}
-			});
+	while (agent.playingState == PlayState.NotPlaying) {
+		try {
+			await iterGame(agent, bots);
+		} catch (err: any) {
+			if (err instanceof Array) {
+				let state = err[1] as AgentState;
+				console.error(`Browser out of reach: ${AgentState[state]}`);
+				console.error("Error cause: ", err[0]);
+			}
 		}
-	} catch (err: any) {
-		if (err instanceof Array) {
-			let state = err[1] as AgentState;
-			console.error(`Browser out of reach: ${AgentState[state]}`);
-			console.error("Error cause: ", err[0]);
-		}
-	} finally {
-		rlconsole.close();
-		await agent.dispose();
-		await browser.close();
-		console.info("Quitting...");
-	}
+	} 
+
+	rlconsole.close();
+	await agent.dispose();
+	await browser.close();
+	console.info("Quitting...");
 })();

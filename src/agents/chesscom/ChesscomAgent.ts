@@ -558,6 +558,13 @@ export class ChesscomAgent implements ChessAgentInterface {
             await this.page.$("#board-layout-sidebar div.bot-selection-scroll").then(async (selection)=> {
                 if (null == selection)
                     throw "Cannot find bot selection";
+                await selection.evaluate((sel)=>{
+                    let sh = Number.MAX_SAFE_INTEGER;
+                    while (sh > sel.scrollHeight) {
+                        sh = sel.scrollHeight;
+                        sel.scrollBy(0, 100);
+                    }
+                });
                 await selection?.dispose();
             });
             let configState = await computer.selectMe(this.page, playAsBlack);

@@ -2,9 +2,8 @@
   "name": "chess-auto",
   "version": "1.0.0",
   "description": "chess automation",
-  "main": "main.js",
   "scripts": {
-    "start": "ts-node -r tsconfig-paths/register src/main.ts",
+    "sample-console": "ts-node -r tsconfig-paths/register sample/console-agent.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "zukarusan",
