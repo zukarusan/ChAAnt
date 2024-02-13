@@ -1,18 +1,18 @@
 import { IChessAgent } from '@agents/IChessAgent';
 import { ChesscomAgent } from '@agents/chesscom/ChesscomAgent';
 import { PlayState } from '@components/PlayState';
-import fastify from 'fastify'
+import fastify, { FastifyReply, FastifyRequest, HookHandlerDoneFunction } from 'fastify'
 import puppeteer from 'puppeteer';
 
 const server = fastify();
 
-type ChessPlatform = 'CHESSCOM' | 'LICHESS';
+type ChessPlatform = 'chesscom' | 'lichess';
 interface INewAgentQuery {
     platform: ChessPlatform;
 }
   
 interface IAgentHeaders {
-    'H-CHESS-AGENT-ID': string;
+    'x-chaant-agent-id': string;
 }
 
 interface IReply {
@@ -23,37 +23,49 @@ interface IReply {
 
 const agents: Map<string, IChessAgent> = new Map();
 const { v4: uuidv4 } = require('uuid');
-
-
-const createNewAgent = async (platform: ChessPlatform): Promise<IChessAgent> => {
+const launchNewBrowserPage = async () => {
     const browser = await puppeteer.launch({
 		headless: false,
 		defaultViewport: null,
 		protocolTimeout: 0,
 		args: ['--start-maximized']
 	});
-    const page = (await browser.pages())[0];
-    if ("CHESSCOM" == platform) {
-        return new ChesscomAgent(page);
-    } else if ("LICHESS" == platform) {
-        await browser.close();
+    return (await browser.pages())[0];
+}
+const createNewAgent = async (platform: ChessPlatform): Promise<IChessAgent> => {
+    if ("chesscom" == platform) {
+        return new ChesscomAgent((await launchNewBrowserPage()));
+    } else if ("lichess" == platform) {
         throw "Undefined agent";
     }
-    await browser.close();
-    throw `Unknown agent plate${platform}`;
+    throw `Unknown platform ${platform}`;
 } 
-
+const validateAgentHeader = (request: FastifyRequest<{
+    Headers: IAgentHeaders
+  }>, reply: FastifyReply) => {
+    const agentId = request.headers['x-chaant-agent-id'];
+    if (agentId === undefined || null == agentId) {
+        reply.code(400).send("Agent Id is not defined");
+    }
+    if ((agents.get(agentId)) === undefined) {
+        reply.code(400).send("Agent is not found");
+    }
+}
 server.post<{
     Querystring: INewAgentQuery,
-    Headers: IAgentHeaders,
     Reply: IReply
-  }>('/newagent', async(request, reply)=> {
-    const { platform } = request.query;
-    let agent: IChessAgent | null = null;
-    if (undefined === platform) {
-        reply.code(400).send({error: "Unknown agent"});
-        return;
+  }>('/newagent', {
+    preValidation: (request, _reply, done) => {
+        const { platform } = request.query
+        if (undefined === platform) {
+            return done(new Error("Unknown platform"));
+        }
+        done();
     }
+  },
+  async(request, reply)=> {
+    const { platform } = request.query;
+    let agent: IChessAgent;
     try {
         agent = await createNewAgent(platform);
     } catch (err) {
@@ -62,17 +74,73 @@ server.post<{
             errMsg = err;
         }
         reply.code(400).send({error: errMsg});
-    }
-    if (null == agent) {
-        reply.code(400).send({error: "Unknown agent"});
         return;
     }
     const agentID: string = uuidv4();
-    agents.set(agentID, agent!);
+    agents.set(agentID, agent);
     reply.code(200).send({ agentId: agentID });
 });
 
-server.post
+server.post<{
+    Querystring: {versus: 'computer' | 'online', botName?: string, as?: 'white' | 'black'},
+    Headers: IAgentHeaders,
+    Reply: IReply
+  }>('/play', {
+    preValidation: (request, reply, done) => {
+        const { versus } = request.query;
+        validateAgentHeader(request, reply);
+        if (undefined === versus || null == versus)  {
+            reply.code(400).send({error: "Opponent is not specified"});
+        }
+        done();
+    }
+  }, async(request, reply)=> {
+    const { versus, botName, as } = request.query;
+    const agentId = request.headers['x-chaant-agent-id'];
+    let agent: IChessAgent;
+    try {
+        agent = agents.get(agentId)!;
+        if ("online" == versus) {
+            await agent.playRapid();
+        } else if ("computer" == versus) {
+            throw "Undefined state";
+        }
+    } catch (err) {
+        let errMsg: string = "Unhandled error occurred";
+        if (typeof err === "string") {
+            errMsg = err;
+        }
+        reply.code(400).send({error: errMsg});
+    }
+    reply.code(200).send();
+});
+
+server.post<{
+    Querystring: {move: string},
+    Headers: IAgentHeaders,
+    Reply: IReply
+  }>('/move', {
+    preValidation: (request, reply, done)=> {
+        validateAgentHeader(request, reply);
+        done();
+    }
+  }, async(request, reply)=> {
+    const { move } = request.query;
+    const agentId = request.headers['x-chaant-agent-id'];
+    let agent: IChessAgent;
+    try {
+        agent = agents.get(agentId)!;
+        await agent.waitTurn();
+        await agent.move(move);
+    } catch (err) {
+        let errMsg: string = "Unhandled error occurred";
+        if (typeof err === "string") {
+            errMsg = err;
+        }
+        reply.code(400).send({error: errMsg});
+    }
+    reply.code(200).send();
+});
 
 server.listen({ port: 8123 }, (err, address) => {
     if (err) {
