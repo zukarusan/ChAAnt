@@ -1,9 +1,9 @@
-import { ChessAgentInterface } from "@agents/ChessAgentInterface";
+import { IChessAgent } from "@agents/IChessAgent";
 import { AgentState } from "@components/AgentState";
 import { ComputerConfigState } from "@components/ComputerConfigState";
 import { PlayState } from "@components/PlayState";
 import { Square } from "@components/Square";
-import { ComputerOptInterface } from "@components/computers/ComputerOptInterface";
+import { IComputerOption } from "@components/computers/IComputerOption";
 import { PieceNotation, ResolveType, notationMoveRegex} from "@misc/Util";
 import { Browser, ElementHandle, Page } from "puppeteer";
 
@@ -11,7 +11,7 @@ declare global {
     var chesscom_translations: any;
     function getRandomHalf(min: number, max: number): Promise<number>;
 }
-export class ChesscomAgent implements ChessAgentInterface {
+export class ChesscomAgent implements IChessAgent {
     private static UNIQUE_PAGES: Set<Page> = new Set<Page>();
     private page: Page;
     private state: AgentState;
@@ -522,7 +522,7 @@ export class ChesscomAgent implements ChessAgentInterface {
         this.playing = PlayState.AgainstComputer;
         return (this.state = this.asBlack! ? AgentState.FirstWaitingTurn : AgentState.TakingTurn);
     }
-    public async playComputer(computer: ComputerOptInterface, playAsBlack: boolean): Promise<AgentState> {
+    public async playComputer(computer: IComputerOption, playAsBlack: boolean): Promise<AgentState> {
         try {
             await this.page.goto("https://www.chess.com/play/computer");
 

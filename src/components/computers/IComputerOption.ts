@@ -1,7 +1,7 @@
 import { ComputerConfigState } from "@components/ComputerConfigState";
 import { Page } from "puppeteer";
 
-export interface ComputerOptInterface {
+export interface IComputerOption {
     get name(): string;
     get elo(): number;
 

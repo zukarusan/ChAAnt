@@ -1,9 +1,9 @@
-import { ChessAgentInterface } from "@agents/ChessAgentInterface";
+import { IChessAgent } from "@agents/IChessAgent";
 import { ChesscomAgent } from "@agents/chesscom/ChesscomAgent";
 import { AgentState } from "@components/AgentState";
 import { PlayState } from "@components/PlayState";
 import { Square } from "@components/Square";
-import { ComputerOptInterface } from "@components/computers/ComputerOptInterface";
+import { IComputerOption } from "@components/computers/IComputerOption";
 import { ChesscomComputerOpt } from "@components/computers/chesscom/ChesscomComputerOpt";
 import * as puppeteer from "puppeteer";
 import * as readline from 'readline';
@@ -61,7 +61,7 @@ const askUntilQuit = async(prompt: string, beforeAsk: ()=>Promise<boolean>, onAn
 		}
 	} while(!quit);
 }
-const askTurn = async (agent: ChessAgentInterface) => {
+const askTurn = async (agent: IChessAgent) => {
 	await askUntilQuit("Your move: ",  async ()=> {
 		if (PlayState.NotPlaying == agent.playingState) {
 			return false;
@@ -78,7 +78,7 @@ const askTurn = async (agent: ChessAgentInterface) => {
 		return true;
 	});
 } 
-const showAllBots = (bots: Array<ComputerOptInterface>) => {
+const showAllBots = (bots: Array<IComputerOption>) => {
 	console.info("Available bots ")
 	console.info("========================");
 	bots.forEach((bot, idx)=> {
@@ -86,8 +86,8 @@ const showAllBots = (bots: Array<ComputerOptInterface>) => {
 	});
 	console.info();
 };
-const askBot = async (bots: Array<ComputerOptInterface>): Promise<ComputerOptInterface>  => {
-	let bot: ComputerOptInterface | undefined;
+const askBot = async (bots: Array<IComputerOption>): Promise<IComputerOption>  => {
+	let bot: IComputerOption | undefined;
 	await askUntilQuit("Choose bot to play against: ", async ()=> true, async (ans)=> {
 		let choice = parseInt(ans);
 		if (choice < 1 || choice > bots.length) {
@@ -136,7 +136,7 @@ const askGame = async (): Promise<1 | 2 | 3 | 4 | 5> => {
 	}
 	return matchMode;
 }
-const playComputer = async (agent: ChessAgentInterface, bots: ComputerOptInterface[]) => {
+const playComputer = async (agent: IChessAgent, bots: IComputerOption[]) => {
 	showAllBots(bots);
 	let chosenBot = await askBot(bots);
 	let asBlack = await askIfPlayAsBlack();
@@ -144,7 +144,7 @@ const playComputer = async (agent: ChessAgentInterface, bots: ComputerOptInterfa
 	return await agent.playComputer(chosenBot, asBlack);
 	
 }
-const selectMode = async (agent: ChessAgentInterface, choice: 1 | 2 | 3 | 4 | 5, bots: ComputerOptInterface[]) => {
+const selectMode = async (agent: IChessAgent, choice: 1 | 2 | 3 | 4 | 5, bots: IComputerOption[]) => {
 	switch(choice) {
 		case 1:
 			return await playComputer(agent, bots);
@@ -158,7 +158,7 @@ const selectMode = async (agent: ChessAgentInterface, choice: 1 | 2 | 3 | 4 | 5,
 			return await agent.playClassical();
 	}
 }
-const iterGame = async (agent: ChessAgentInterface, bots: ComputerOptInterface[])=> await new Promise<void>(async (resolve, reject) => {
+const iterGame = async (agent: IChessAgent, bots: IComputerOption[])=> await new Promise<void>(async (resolve, reject) => {
 	let choice = await askGame();
 	await selectMode(agent, choice, bots).then(async (state)=>{
 		agent.onGameOver = ()=> {
@@ -194,7 +194,7 @@ const iterGame = async (agent: ChessAgentInterface, bots: ComputerOptInterface[]
 	if (jendela != null) {
 		await page.setViewport({ width: jendela.innerWidth, height: jendela.innerHeight });
 	}
-	let agent: ChessAgentInterface;
+	let agent: IChessAgent;
 	agent = new ChesscomAgent(page);
 	while (agent.playingState == PlayState.NotPlaying) {
 		try {

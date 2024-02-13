@@ -1,10 +1,10 @@
 import { AgentState } from "@components/AgentState";
 import { PlayState } from "@components/PlayState";
 import { Square } from "@components/Square";
-import { ComputerOptInterface } from "@components/computers/ComputerOptInterface";
+import { IComputerOption } from "@components/computers/IComputerOption";
 import { PieceNotation } from "@misc/Util";
 
-export interface ChessAgentInterface {
+export interface IChessAgent {
     move(moveNotation: string): Promise<AgentState>;
     waitTurn(): Promise<AgentState>;
     premove(): Promise<void>;
@@ -15,7 +15,7 @@ export interface ChessAgentInterface {
 
     set onGameOver(handler: ()=> void);
     
-    playComputer(computer: ComputerOptInterface, asBlack: boolean): Promise<AgentState>;
+    playComputer(computer: IComputerOption, asBlack: boolean): Promise<AgentState>;
     playRapid(...args: any): Promise<AgentState>;
     playBlitz(...args: any): Promise<AgentState>;
     playBullet(...args: any): Promise<AgentState>;

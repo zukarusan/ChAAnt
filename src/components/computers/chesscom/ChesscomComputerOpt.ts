@@ -1,9 +1,9 @@
 import { ComputerConfigState } from "@components/ComputerConfigState";
-import { ComputerOptInterface } from "../ComputerOptInterface";
+import { IComputerOption } from "../IComputerOption";
 import puppeteer, { Page } from "puppeteer";
 import { ResolveType } from "@misc/Util";
 
-export class ChesscomComputerOpt implements ComputerOptInterface {
+export class ChesscomComputerOpt implements IComputerOption {
     private static readonly computerConfigs: ChesscomComputerOpt[] = new Array<ChesscomComputerOpt>();
     private static initialized: Promise<boolean> = new Promise(this.initComputers);
     static {
