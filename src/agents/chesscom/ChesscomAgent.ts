@@ -19,6 +19,7 @@ export class ChesscomAgent implements IChessAgent {
     private asBlack?: boolean;
     private agentMoveNumber?: number;
     private gameOverHandler: ()=> void;
+    private onMoves: (()=>Promise<void>)[];
     private static castles = {"o-o": { "white": ["e1", "g1"], "black": ["e8", "g8"] }, "o-o-o": { "white": ["e1", "c1"], "black": ["e8", "c8"] }}
     public constructor(page: Page) {
         if (ChesscomAgent.UNIQUE_PAGES.has(page)) {
@@ -31,6 +32,7 @@ export class ChesscomAgent implements IChessAgent {
         ChesscomAgent.UNIQUE_PAGES.add(page);
         this.gameOverHandler = ()=> {};
         this.initAsync();
+        this.onMoves = [];
     }
     set onGameOver(handler: () => void) {
         this.gameOverHandler = handler;
@@ -64,9 +66,24 @@ export class ChesscomAgent implements IChessAgent {
             throw err;
         }
     }
+    public addOnMove(onmove: ()=>Promise<void>){
+        this.onMoves.push(onmove);
+    }
+    public removeOnMove(handler: ()=>Promise<void>) {
+        let idx = this.onMoves.indexOf(handler);
+        if (idx > -1) {
+            this.onMoves.splice(idx, 1);
+        }
+    }
     async move(moveNotation: string): Promise<AgentState> {
         const { from: from, to: to, promoteTo: promoteTo} = await this.evalMove(moveNotation);
-        return await this.moveBySquare(from, to, promoteTo);
+        const state = await this.moveBySquare(from, to, promoteTo);
+        if (AgentState.MovedWaitingTurn == state) {
+            this.onMoves.forEach(async (listener)=>{
+                await listener();
+            });
+        }
+        return state;
     }
     public async moveBySquare(from: Square, to: Square, promoteTo: PieceNotation | undefined = undefined): Promise<AgentState> {
         if (PlayState.NotPlaying == this.playing) {
@@ -79,7 +96,7 @@ export class ChesscomAgent implements IChessAgent {
                 }
             });
         }
-        // ugly code, it throws error
+        // ugly code, it throws error. but f it
         await this.tryMoveBySquare(from, to, false, promoteTo);
         this.agentMoveNumber! += 2;
         return (this.state = AgentState.MovedWaitingTurn);

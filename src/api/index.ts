@@ -142,6 +142,32 @@ server.post<{
     reply.code(200).send();
 });
 
+server.post<{
+    Querystring: {move: string},
+    Headers: IAgentHeaders,
+    Reply: IReply
+  }>('/moveCollective', {
+    preValidation: (request, reply, done)=> {
+        validateAgentHeader(request, reply);
+        done();
+    }
+  }, async(request, reply)=> {
+    const { move } = request.query;
+    const agentId = request.headers['x-chaant-agent-id'];
+    let agent: IChessAgent;
+    try {
+        agent = agents.get(agentId)!;
+        await agent.waitTurn();
+        await agent.move(move);
+    } catch (err) {
+        let errMsg: string = "Unhandled error occurred";
+        if (typeof err === "string") {
+            errMsg = err;
+        }
+        reply.code(400).send({error: errMsg});
+    }
+    reply.code(200).send();
+});
 server.listen({ port: 8123 }, (err, address) => {
     if (err) {
         console.error(err)
