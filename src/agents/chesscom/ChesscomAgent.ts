@@ -465,48 +465,59 @@ export class ChesscomAgent implements IChessAgent {
             throw err;
         }
     }
-    private async selectTimeControl(timeControlSelector: string) {
-        await this.page.waitForSelector(`button[data-cy='new-game-time-selector-button']`)
-        let timeCombo = await this.page.$(`button[data-cy='new-game-time-selector-button']`);
+    public async getTranslation(key: string): Promise<string> {
+        return await this.page.evaluate((key)=>{
+            return chesscom_translations[key] ?? key;
+        }, key);
+    }
+    private async searchElement(xpath: string, regex: RegExp): Promise<ElementHandle<Element> | null>  {
+        let rs = await this.page.$$(xpath);
+        let element = null;
+        for (let el of rs) {
+            let text = await el.evaluate((node, regex) => {
+                return (node as HTMLElement).innerText;
+            }, regex);
+            if (text != null && text !== undefined && regex.test(text)) {
+                element = el;
+                break;
+            }
+        }
+        return element;
+    }
+    private async selectTimeControl(timeControl: string) {
+        let minTitle = await this.page.evaluate(()=>{
+            return chesscom_translations.messages.min as string ?? "min";
+        });
+        const minSelector = `::-p-xpath(//button[contains(., '${minTitle}')])`;
+        await this.page.waitForSelector(minSelector).catch(()=>{
+            throw "No time control available";
+        });
+        let timeCombo = await this.searchElement(minSelector, new RegExp(`${minTitle}\\s*$`));
         if (timeCombo == null) {
             throw "No time control available";
         }
         await timeCombo.click();
-        await this.page.waitForSelector(`button[data-cy='${timeControlSelector}']`);
-        await (await this.page.$(`button[data-cy='${timeControlSelector}']`))?.click()
+        const timeControlSelector = `::-p-xpath(//button[contains(., '${timeControl}')])`;
+        await this.page.waitForSelector(timeControlSelector);
+        let rs = await this.searchElement(timeControlSelector, new RegExp(`^\\s*${timeControl}\\s*$`));
+        rs?.click();
+        // await (await this.page.$(`button[data-cy='${timeControl}']`))?.click();
     }
     private async playOnline(executeConfig: (...args: any)=>Promise<void>, ...args: any) {
         try {
             await this.page.goto("https://www.chess.com/play/online");
-            await this.page.waitForSelector(`button[data-cy='new-game-index-play']`);
-            
-            await executeConfig(...args);
-            let playTitle = await this.page.evaluate(() => new Promise<string>((resolve)=>{
-                let timeoutId = setTimeout(() => {
-                    throw "Finding play button times out";
-                }, 10200);
-                let playTitle = chesscom_translations.messages.Play as string ?? "Play";
-                var x = new MutationObserver(function (_mut, ob) {
-                    if (document.querySelector(`button[data-cy='new-game-index-play']`)) {
-                        clearTimeout(timeoutId);
-                        ob.disconnect();
-                        resolve(playTitle);
-                    }
-                });
-                let btn = document.querySelector(`button[data-cy='new-game-index-play']`);
-                if (btn == null) {
-                    let node = document.querySelector("#board-layout-sidebar");
-                    if (node != null)  {
-                        x.observe(node , { childList: true });
-                    } else {
-                        throw "Play button not found";
-                    }
-                } else {
-                    clearTimeout(timeoutId);
-                    resolve(playTitle);
-                }
-            }));
-            let playBtn = await this.page.$(`button[data-cy='new-game-index-play']`);
+            await this.page.waitForFunction(()=> chesscom_translations !== undefined && chesscom_translations !== null);
+            let playTitle = await this.page.evaluate(()=>{
+                return chesscom_translations.messages.Play as string ?? "Play";
+            });
+            const playSelector = `::-p-xpath(//button[contains(., '${playTitle}')])`;
+            await this.page.waitForSelector(playSelector).catch((e)=>{
+                throw "Play button not found";
+            });
+            await executeConfig(...args).catch(e => {
+                throw `Time control button not found. ${e}`
+            });
+            let playBtn = await this.searchElement(playSelector, new RegExp(`\\s*${playTitle}\\s*$`));
             if (playBtn == null) {
                 throw "No play button detected";
             }
@@ -635,22 +646,22 @@ export class ChesscomAgent implements IChessAgent {
     }
     public async playRapid(...args: any): Promise<AgentState> {
         return await this.playOnline(async (...args) => {
-            await this.selectTimeControl("time-selector-category-600");
+            await this.selectTimeControl(`10 ${await this.getTranslation("min")}`);
         }, ...args);
     }
     public async playBlitz(...args: any): Promise<AgentState> {
         return await this.playOnline(async (...args) => {
-            await this.selectTimeControl("time-selector-category-300");
+            await this.selectTimeControl(`5 ${await this.getTranslation("min")}`);
         }, ...args);
     }
     public async playBullet(...args: any): Promise<AgentState> {
         return await this.playOnline(async (...args) => {
-            await this.selectTimeControl("time-selector-category-60|1");
+            await this.selectTimeControl("1 | 1");
         }, ...args);
     }
     public async playClassical(...args: any): Promise<AgentState> {
         return await this.playOnline(async (...args) => {
-            await this.selectTimeControl("time-selector-category-1800");
+            await this.selectTimeControl(`30 ${await this.getTranslation("min")}`);
         }, ...args);
     }
     public async dispose(): Promise<void> {
