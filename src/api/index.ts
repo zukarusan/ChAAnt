@@ -1,6 +1,7 @@
 import { IChessAgent } from '@agents/IChessAgent';
 import { ChesscomAgent } from '@agents/chesscom/ChesscomAgent';
 import { PlayState } from '@components/PlayState';
+import { CollectiveMove } from '@misc/CollectiveMove';
 import fastify, { FastifyReply, FastifyRequest, HookHandlerDoneFunction } from 'fastify'
 import puppeteer from 'puppeteer';
 
@@ -22,6 +23,7 @@ interface IReply {
 }
 
 const agents: Map<string, IChessAgent> = new Map();
+const collectiveMoves: Map<string, CollectiveMove> = new Map();
 const { v4: uuidv4 } = require('uuid');
 const launchNewBrowserPage = async () => {
     const browser = await puppeteer.launch({
@@ -78,6 +80,7 @@ server.post<{
     }
     const agentID: string = uuidv4();
     agents.set(agentID, agent);
+    collectiveMoves.set(agentID, new CollectiveMove(agent));
     reply.code(200).send({ agentId: agentID });
 });
 
@@ -155,10 +158,11 @@ server.post<{
     const { move } = request.query;
     const agentId = request.headers['x-chaant-agent-id'];
     let agent: IChessAgent;
+    let cMoves: CollectiveMove;
     try {
         agent = agents.get(agentId)!;
-        await agent.waitTurn();
-        await agent.move(move);
+        cMoves = collectiveMoves.get(agentId)!;
+        cMoves.addMove(move);
     } catch (err) {
         let errMsg: string = "Unhandled error occurred";
         if (typeof err === "string") {

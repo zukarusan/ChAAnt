@@ -525,6 +525,8 @@ export class ChesscomAgent implements IChessAgent {
             if (await this.isGuest()) {
                 this.page.waitForSelector("#guest-button").then(btn=> {
                     btn?.click();
+                }).catch(e=>{
+                    console.log("Guest button not found, ignoring...");
                 });
             }
             await playBtn.dispose();

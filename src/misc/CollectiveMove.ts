@@ -9,15 +9,18 @@ export class CollectiveMove {
     private evalMove: (move:string)=>Promise<boolean>;
     private static MIN = 5000; 
     private static MAX = 10000; 
+    private static COLLECT_MAX = 3;
+    private totalCollects = 0;
     private moveAddition: Promise<void> = Promise.resolve();
-    private intervalMoveId: NodeJS.Timeout = setTimeout(()=>{},0);
+    private moveCommit: Promise<void> = Promise.resolve();
+    private intervalMoveId: NodeJS.Timeout | null = null;
 
     // TODO: Set random timer interval with a move function in it
     public constructor(agent: IChessAgent) {
         this.agent = agent;
         this.moveCollection = new Map();
         if (agent instanceof ChesscomAgent) {
-            agent.addOnMove(this.onMoved); // add on moves
+            agent.addOnMove(this.clearCommit.bind(this)); // add on moves
             this.evalMove = async (move:string): Promise<boolean> =>{
                 let valid = false;
                 await (this.agent as ChesscomAgent).evalMove(move).then((res)=>{
@@ -28,15 +31,16 @@ export class CollectiveMove {
                     }
                     valid = false;
                 });
-                return valid
+                return valid;
             }
         } else {
             throw `Undefined collective move for agent ${typeof agent}`
         }
     }
-    private async setIntervalMove() {
-        this.intervalMoveId = setInterval(async ()=> {
+    private async commitMove() {
+        this.moveCommit = (async () => {
             if (PlayState.NotPlaying == this.agent.playingState) {
+                this.clearCommit();
                 return;
             }
             await this.agent.waitTurn();
@@ -52,29 +56,50 @@ export class CollectiveMove {
             if (move !== undefined) {
                 await this.agent.move(move);
             }
-        }, this.randomTime());
+            this.clearCommit();
+        })();
+        await this.moveCommit;
+    }
+    private async setTimeoutMove() {
+        this.intervalMoveId = setTimeout(this.commitMove.bind(this), this.randomTime());
     }
     public async addMove(moveNotation: string) {
+        let size = this.moveCollection.size;
         await this.moveAddition;
+        await this.moveCommit;
+        if (this.moveCollection.size < size) {
+            return; // Late submit to add move
+        }
         this.moveAddition = (async () => {
             if (PlayState.NotPlaying == this.agent.playingState) {
-                this.moveCollection.clear();
-                clearInterval(this.intervalMoveId);
+                this.clearCommit();
                 return;
-            }
-            if (null == this.intervalMoveId || undefined === this.intervalMoveId) {
-                await this.setIntervalMove();
             }
             let move = moveNotation.trim().toLowerCase();
             if (await this.evalMove(move)) {
                 let freq = this.moveCollection.get(move) ?? 0;
                 freq += 1;
+                this.totalCollects += 1;
                 this.moveCollection.set(move, freq);
+            }
+            // first collective add, set the timeout 
+            if (null == this.intervalMoveId) {
+                await this.setTimeoutMove();
+            }
+            if (null != this.intervalMoveId && this.totalCollects >= CollectiveMove.COLLECT_MAX) {
+                clearTimeout(this.intervalMoveId);
+                await this.moveCommit;
+                await this.commitMove();
             }
         })();
     }
-    private async onMoved() {
+    private async clearCommit() {
         this.moveCollection.clear();
+        if (this.intervalMoveId != null) {
+            clearTimeout(this.intervalMoveId);
+        }
+        this.intervalMoveId = null;
+        this.totalCollects = 0;
     }
 
     randomTime() {
