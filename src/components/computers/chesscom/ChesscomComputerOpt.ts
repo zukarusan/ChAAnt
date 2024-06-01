@@ -17,8 +17,10 @@ export class ChesscomComputerOpt implements IComputerOption {
     }
     private _elo: number;
     private _name: string;
+    private _username: string;
     private _group: string;
-    private constructor(name: string, elo: number, group: string) {
+    private constructor(username: string, name: string, elo: number, group: string) {
+        this._username = username;
         this._name = name;
         this._elo = elo;
         this._group = group;
@@ -38,7 +40,7 @@ export class ChesscomComputerOpt implements IComputerOption {
             await browser.close();
             bots.forEach((bot)=> {
                 if (!bot.is_premium) {
-                    ChesscomComputerOpt.computerConfigs.push(new ChesscomComputerOpt(bot.username, bot.rating, bot.classification));
+                    ChesscomComputerOpt.computerConfigs.push(new ChesscomComputerOpt(bot.username, bot.name, bot.rating, bot.classification));
                 }
             });
             resolve(true);
@@ -66,7 +68,7 @@ export class ChesscomComputerOpt implements IComputerOption {
         if (!page.url().includes("chess.com/play/computer")) {
             throw "Page is not within computer mode";
         }
-        let botBtn = await page.waitForSelector(`div[data-cy='${this._name}'][data-bot-classification='${this._group}']`);
+        let botBtn = await page.waitForSelector(`div[data-bot-selection-name='${this._name}'][data-bot-classification='${this._group}']`);
         if (null == botBtn) {
             throw `Bot ${this._name} is not found`;
         }
@@ -79,7 +81,7 @@ export class ChesscomComputerOpt implements IComputerOption {
         await chooseBtn.click();
         await chooseBtn.dispose();
 
-        let colorBtn = await page.waitForSelector(`div[data-cy="${asBlack ? 'black' : 'white'}"] input[name="colorSelectionButton"]`);
+        let colorBtn = await page.waitForSelector(`div.select-playing-as-radio-${asBlack ? 'black' : 'white'} input[name="colorSelectionButton"]`);
         if (null == colorBtn) {
             throw "There is no color button";
         }
