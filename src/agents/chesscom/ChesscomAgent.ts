@@ -523,17 +523,9 @@ export class ChesscomAgent implements IChessAgent {
             }
             await playBtn.click();
             if (await this.isGuest()) {
-                let popup = await this.page.evaluate(()=> {
-                    return undefined !== localStorage.playNewGameSettings;
+                this.page.waitForSelector("#guest-button").then(btn=> {
+                    btn?.click();
                 });
-                if (popup)
-                    await this.page.waitForSelector("#guest-button");
-                await this.page.evaluate(()=>{{
-                    let guestBtn = document.getElementById("guest-button");
-                    if (null != guestBtn) {
-                        guestBtn.click();
-                    }
-                }});
             }
             await playBtn.dispose();
             await this.ensurePlaying();
