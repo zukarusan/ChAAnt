@@ -7,8 +7,8 @@ export class CollectiveMove {
     private agent: IChessAgent;
     private moveCollection: Map<string, number>;
     private evalMove: (move:string)=>Promise<boolean>;
-    private static MIN = 5000; 
-    private static MAX = 10000; 
+    static get MIN() { return 5000; }
+    static get MAX() { return 10000; }
     private static COLLECT_MAX = 3;
     private totalCollects = 0;
     private moveAddition: Promise<void> = Promise.resolve();
