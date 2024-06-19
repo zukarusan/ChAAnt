@@ -113,6 +113,9 @@
   "exclude": [
       "node_modules",
       "typings/browser",
-      "typings/browser.d.ts"
+      "typings/browser.d.ts",
+      "tests",
+      "**/*.spec.ts",
+      "**/*.test.ts",
   ],
 }
