@@ -27,7 +27,7 @@ test("Chess.com Collective move test", async () => {
     await colMoves.addMove("e4");
     await delay(CollectiveMove.MAX);
     
-    expect(agent.lastMove).toEqual("e4");
+    expect(await agent.agentLastMove).toEqual("e4");
 
     await agent.waitTurn();
     colMoves.addMove("nc3");
@@ -37,5 +37,5 @@ test("Chess.com Collective move test", async () => {
     await colMoves.addMove("nc3");
     await colMoves.addMove("a4");
    
-    expect(agent.lastMove).toEqual("nc3"); 
+    expect(await agent.agentLastMove).toEqual("nc3"); 
 }, CollectiveMove.MAX * 3);

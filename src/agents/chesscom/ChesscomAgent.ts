@@ -339,7 +339,27 @@ export class ChesscomAgent implements IChessAgent {
         return this.asBlack ? "black" : "white";
     }
     get lastMove(): Promise<string> {
-        throw "lastMove is not implemented";
+        return this.fetchMoves().then((moves)=>{
+            return moves.length > 0 ? moves[moves.length-1] : "";
+        });
+    }
+    get agentLastMove(): Promise<string> {
+        return this.fetchMoves().then((moves)=>{
+            let last = moves.length-1;
+            if ((this.blackOrWhite == "black" && last % 2 == 0) || (this.blackOrWhite == "white" && last % 2 == 1))
+                last -= 1;
+            return last >= 0 ? moves[last] : "";
+        });
+    }
+    private async fetchMoves(): Promise<Array<string>> {
+        return await this.executeOnBoardElem((board)=>{
+            let game = board.game;
+            let history: Array<string> | null | undefined = game.getHistorySANs();
+            if (history && history.length >= 0) {
+                return history;
+            }
+            return [];
+        });
     }
     public async isGuest(): Promise<boolean> {
         if (!this.page.url().includes("chess.com")) {

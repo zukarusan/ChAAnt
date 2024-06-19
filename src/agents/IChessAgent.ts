@@ -12,6 +12,7 @@ export interface IChessAgent {
     get playingState(): PlayState;
     get blackOrWhite(): "black" | "white";
     get lastMove(): Promise<string>;
+    get agentLastMove(): Promise<string>;
 
     set onGameOver(handler: ()=> void);
     
