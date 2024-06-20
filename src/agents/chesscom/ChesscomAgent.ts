@@ -340,7 +340,7 @@ export class ChesscomAgent implements IChessAgent {
     }
     get lastMove(): Promise<string> {
         return this.fetchMoves().then((moves)=>{
-            return moves.length > 0 ? moves[moves.length-1] : "";
+            return moves.length > 0 ? moves[moves.length-1].toLowerCase() : "";
         });
     }
     get agentLastMove(): Promise<string> {
@@ -348,7 +348,7 @@ export class ChesscomAgent implements IChessAgent {
             let last = moves.length-1;
             if ((this.blackOrWhite == "black" && last % 2 == 0) || (this.blackOrWhite == "white" && last % 2 == 1))
                 last -= 1;
-            return last >= 0 ? moves[last] : "";
+            return last >= 0 ? moves[last].toLowerCase() : "";
         });
     }
     private async fetchMoves(): Promise<Array<string>> {

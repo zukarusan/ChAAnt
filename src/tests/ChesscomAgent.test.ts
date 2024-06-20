@@ -20,5 +20,4 @@ test("Chess.com Agent test online", async () => {
         await agent.move("e4");
         expect(await agent.agentLastMove).toEqual("e4");
     }
-    await browser.close();
 }, 30000);

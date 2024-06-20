@@ -7,9 +7,9 @@ export class CollectiveMove {
     private agent: IChessAgent;
     private moveCollection: Map<string, number>;
     private evalMove: (move:string)=>Promise<boolean>;
-    static get MIN() { return 5000; }
-    static get MAX() { return 10000; }
-    private static COLLECT_MAX = 3;
+    static get MIN() { return 10000; }
+    static get MAX() { return 15000; }
+    private static COLLECT_MAX = 10;
     private totalCollects = 0;
     private moveAddition: Promise<void> = Promise.resolve();
     private moveCommit: Promise<void> = Promise.resolve();
@@ -44,7 +44,6 @@ export class CollectiveMove {
                 return;
             }
             await this.agent.waitTurn();
-            await this.moveAddition;
             let move: string | undefined = undefined;
             let freq: number = 0;
             this.moveCollection.forEach((val,key)=>{
@@ -85,8 +84,7 @@ export class CollectiveMove {
             // first collective add, set the timeout 
             if (null == this.intervalMoveId) {
                 await this.setTimeoutMove();
-            }
-            if (null != this.intervalMoveId && this.totalCollects >= CollectiveMove.COLLECT_MAX) {
+            } else if (null != this.intervalMoveId && this.totalCollects >= CollectiveMove.COLLECT_MAX) {
                 clearTimeout(this.intervalMoveId);
                 await this.moveCommit;
                 await this.commitMove();

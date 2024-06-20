@@ -19,23 +19,25 @@ test("Chess.com Collective move test", async () => {
     expect(agent.blackOrWhite).toEqual("white");
     await agent.waitTurn();
     let colMoves = new CollectiveMove(agent);
-    colMoves.addMove("d4");
-    colMoves.addMove("e4");
-    colMoves.addMove("e4");
-    await delay(CollectiveMove.MIN - 1000);
     await colMoves.addMove("d4");
     await colMoves.addMove("e4");
+    await colMoves.addMove("e4");
+    await colMoves.addMove("d4");
+    await delay(CollectiveMove.MIN * 0.2);
+    await colMoves.addMove("e4");
     await delay(CollectiveMove.MAX);
-    
-    expect(await agent.agentLastMove).toEqual("e4");
+    let lastMove = await agent.agentLastMove;
+    expect(lastMove).toEqual("e4");
 
     await agent.waitTurn();
-    colMoves.addMove("nc3");
-    colMoves.addMove("d4");
-    colMoves.addMove("nf3");
-    await delay(CollectiveMove.MIN - 1000);
+    await colMoves.addMove("nc3");
+    await colMoves.addMove("d4");
+    await delay(CollectiveMove.MIN * 0.2);
+    await colMoves.addMove("nf3");
     await colMoves.addMove("nc3");
     await colMoves.addMove("a4");
    
-    expect(await agent.agentLastMove).toEqual("nc3"); 
-}, CollectiveMove.MAX * 3);
+    await delay(CollectiveMove.MAX);
+    lastMove = await agent.agentLastMove;
+    expect(lastMove).toEqual("nc3"); 
+}, CollectiveMove.MAX * 5);

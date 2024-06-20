@@ -162,7 +162,7 @@ server.post<{
     try {
         agent = agents.get(agentId)!;
         cMoves = collectiveMoves.get(agentId)!;
-        cMoves.addMove(move);
+        await cMoves.addMove(move);
     } catch (err) {
         let errMsg: string = "Unhandled error occurred";
         if (typeof err === "string") {
