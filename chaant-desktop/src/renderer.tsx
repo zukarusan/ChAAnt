@@ -27,5 +27,18 @@
  */
 
 import './index.css';
+import './index.tailwind.css';
 
 console.log('👋 This message is being logged by "renderer.js", included via webpack');
+import App from './App';
+import { createRoot } from 'react-dom/client';
+import React from 'react';
+
+console.log("Test react")
+const container = document.getElementById('root');
+const root = createRoot(container); // createRoot(container!) if you use TypeScript
+root.render(
+    <React.StrictMode>
+        <App />
+    </React.StrictMode>
+);
