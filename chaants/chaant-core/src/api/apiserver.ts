@@ -144,7 +144,29 @@ const runServer = () => {
         }
         reply.code(200).send();
     });
-
+    server.delete<{
+        Headers: IAgentHeaders,
+        Reply: IReply
+    }>('/closeagent', {
+        preValidation: (request, reply, done)=> {
+            validateAgentHeader(request, reply);
+            done();
+        }
+    }, async(request, reply)=> {
+        const agentId = request.headers['x-chaant-agent-id'];
+        let agent: IChessAgent;
+        try {
+            agent = agents.get(agentId)!;
+            await agent.dispose();
+        } catch (err) {
+            let errMsg: string = "Unhandled error occurred";
+            if (typeof err === "string") {
+                errMsg = err;
+            }
+            reply.code(400).send({error: errMsg});
+        }
+        reply.code(200).send();
+    });
     server.post<{
         Querystring: {move: string},
         Headers: IAgentHeaders,
@@ -179,5 +201,6 @@ const runServer = () => {
         }
         console.log(`Server listening at ${address}`)
     });
+    return server;
 }
 export default runServer;
