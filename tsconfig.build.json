@@ -1,0 +1,11 @@
+{
+    "files": [],
+    "references": [
+      {
+        "path": "./chaants/chaant-core"
+      },
+      {
+        "path": "./chaants/chaant-desktop"
+      }
+    ]
+  }
