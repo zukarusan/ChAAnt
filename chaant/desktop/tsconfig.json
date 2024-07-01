@@ -1,5 +1,5 @@
 {
-  "extends": "../../tsconfig.base.json",
+  // "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "jsx": "react",
     "target": "ES6",
@@ -14,10 +14,9 @@
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "paths": {
-      "*": ["node_modules/*"]
-      // ,"@*": ["../../chaant/core/src/*"]
+      "*": ["node_modules/*", "../../node_modules/*"]
     }
   },
-  "references": [{ "path": "../core" }],
-  "include": ["src/**/*", "postcss.config.js", "tailwind.config.js"]
+  // "references": [{ "path": "../core" }],
+  "include": ["src/**/*"]
 }

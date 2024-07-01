@@ -420,7 +420,7 @@ export class ChesscomAgent implements IChessAgent {
             })();
             if (null == node) {
                 let panel = document.querySelector("#board-layout-sidebar") ?? reject("Can't eval playing. Resign label not detected");
-                observer.observe(panel!, { childList: true });
+                panel && observer.observe(panel, { childList: true });
             } else {
                 resolve();
                 clearTimeout(timeoutId);

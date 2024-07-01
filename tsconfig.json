@@ -1,8 +1,7 @@
 {
-    "files": [],
-    "references": [
-      { "path": "./chaant/core" },
-      { "path": "./chaant/desktop" }
-    ]
-  }
-  
+  "files": [],
+  "references": [
+    { "path": "./chaant/core" },
+    { "path": "./chaant/desktop" }
+  ]
+}

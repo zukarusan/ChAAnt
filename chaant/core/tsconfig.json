@@ -117,6 +117,7 @@
       "typings/browser",
       "typings/browser.d.ts",
       "tests",
+      "sample",
       "**/*.spec.ts",
       "**/*.test.ts",
   ],

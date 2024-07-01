@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { ipcRenderer } from 'electron';
 
 function App() {
   console.log((window as any).ipcRenderer);
@@ -33,7 +32,7 @@ function App() {
   const handleStartServer = async () => {
     setServerStarting(true);
     try {
-      const id = await ipcRenderer.invoke('start-server');
+      const id = await window.mainChaant.send('start-server');
       setAgentId(id);
       setServerRunning(true);
     } finally {
@@ -41,12 +40,12 @@ function App() {
     }
   };
   const handlePlayOnline = async () => {
-    const result = await ipcRenderer.invoke('play-online');
+    const result = await window.mainChaant.send('play-online');
     setPlayResult(result);
   };
 
   const handlePlayComputer = async () => {
-      const result = await ipcRenderer.invoke('play-computer');
+      const result = await window.mainChaant.send('play-computer');
       setPlayResult(result);
   };
   useEffect(() => {

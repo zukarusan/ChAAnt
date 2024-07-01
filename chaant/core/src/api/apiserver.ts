@@ -3,8 +3,9 @@ import { ChesscomAgent } from '@chaant/core/src/agents/chesscom/ChesscomAgent';
 import { CollectiveMove } from '@chaant/core/src/misc/CollectiveMove';
 import fastify, { FastifyReply, FastifyRequest, HookHandlerDoneFunction } from 'fastify'
 import puppeteer from 'puppeteer';
+import getPort from 'get-port';
 
-const runServer = () => {
+const runServer = async () => {
     const server = fastify();
     
     type ChessPlatform = 'chesscom' | 'lichess';
@@ -194,13 +195,14 @@ const runServer = () => {
         }
         reply.code(200).send();
     });
-    server.listen({ port: 8123 }, (err, address) => {
+    const port = await getPort();
+    server.listen({ port: port}, (err, address) => {
         if (err) {
             console.error(err)
             process.exit(1)
         }
         console.log(`Server listening at ${address}`)
     });
-    return server;
+    return {server, port};
 }
 export default runServer;
