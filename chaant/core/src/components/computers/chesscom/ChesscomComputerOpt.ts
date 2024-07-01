@@ -1,7 +1,7 @@
-import { ComputerConfigState } from "@components/ComputerConfigState";
+import { ComputerConfigState } from "@chaant/core/src/components/ComputerConfigState";
 import { IComputerOption } from "../IComputerOption";
 import puppeteer, { Page } from "puppeteer";
-import { ResolveType } from "@misc/Util";
+import { ResolveType } from "@chaant/core/src/misc/Util";
 
 export class ChesscomComputerOpt implements IComputerOption {
     private static readonly computerConfigs: ChesscomComputerOpt[] = new Array<ChesscomComputerOpt>();

@@ -36,9 +36,11 @@ import React from 'react';
 
 console.log("Test react")
 const container = document.getElementById('root');
-const root = createRoot(container); // createRoot(container!) if you use TypeScript
-root.render(
-    <React.StrictMode>
+if (container != null) {
+    const root = createRoot(container); // createRoot(container!) if you use TypeScript
+    root.render(
+        <React.StrictMode>
         <App />
     </React.StrictMode>
-);
+    );
+}

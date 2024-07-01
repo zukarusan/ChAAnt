@@ -1,7 +1,7 @@
-import { IChessAgent } from "@agents/IChessAgent";
-import { ChesscomAgent } from "@agents/chesscom/ChesscomAgent";
-import { AgentState } from "@components/AgentState";
-import { PlayState } from "@components/PlayState";
+import { IChessAgent } from "@chaant/core/src/agents/IChessAgent";
+import { ChesscomAgent } from "@chaant/core/src/agents/chesscom/ChesscomAgent";
+import { AgentState } from "@chaant/core/src/components/AgentState";
+import { PlayState } from "@chaant/core/src/components/PlayState";
 
 export class CollectiveMove {
     private agent: IChessAgent;

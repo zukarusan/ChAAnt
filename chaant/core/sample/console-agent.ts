@@ -1,10 +1,9 @@
-import { IChessAgent } from "@agents/IChessAgent";
-import { ChesscomAgent } from "@agents/chesscom/ChesscomAgent";
-import { AgentState } from "@components/AgentState";
-import { PlayState } from "@components/PlayState";
-import { Square } from "@components/Square";
-import { IComputerOption } from "@components/computers/IComputerOption";
-import { ChesscomComputerOpt } from "@components/computers/chesscom/ChesscomComputerOpt";
+import { IChessAgent } from "@chaant/core/src/agents/IChessAgent";
+import { ChesscomAgent } from "@chaant/core/src/agents/chesscom/ChesscomAgent";
+import { AgentState } from "@chaant/core/src/components/AgentState";
+import { PlayState } from "@chaant/core/src/components/PlayState";
+import { IComputerOption } from "@chaant/core/src/components/computers/IComputerOption";
+import { ChesscomComputerOpt } from "@chaant/core/src/components/computers/chesscom/ChesscomComputerOpt";
 import * as puppeteer from "puppeteer";
 import * as readline from 'readline';
 

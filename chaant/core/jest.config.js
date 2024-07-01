@@ -13,9 +13,7 @@ module.exports = {
     "<rootDir>"
   ],
   moduleNameMapper: {
-    '^@agents/(.*)$': ['<rootDir>/src/agents/$1'],
-    '^@components/(.*)$': ['<rootDir>/src/components/$1'],
-    '^@misc/(.*)$': ['<rootDir>/src/misc/$1']
+    
   },
   transformIgnorePatterns: [
     

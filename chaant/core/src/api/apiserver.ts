@@ -1,6 +1,6 @@
-import { IChessAgent } from '@agents/IChessAgent';
-import { ChesscomAgent } from '@agents/chesscom/ChesscomAgent';
-import { CollectiveMove } from '@misc/CollectiveMove';
+import { IChessAgent } from '@chaant/core/src/agents/IChessAgent';
+import { ChesscomAgent } from '@chaant/core/src/agents/chesscom/ChesscomAgent';
+import { CollectiveMove } from '@chaant/core/src/misc/CollectiveMove';
 import fastify, { FastifyReply, FastifyRequest, HookHandlerDoneFunction } from 'fastify'
 import puppeteer from 'puppeteer';
 

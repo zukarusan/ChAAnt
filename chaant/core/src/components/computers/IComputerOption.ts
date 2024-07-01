@@ -1,4 +1,4 @@
-import { ComputerConfigState } from "@components/ComputerConfigState";
+import { ComputerConfigState } from "@chaant/core/src/components/ComputerConfigState";
 import { Page } from "puppeteer";
 
 export interface IComputerOption {

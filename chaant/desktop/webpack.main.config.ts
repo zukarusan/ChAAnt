@@ -18,6 +18,6 @@ export const mainConfig: Configuration = {
   plugins,
   resolve: {
     extensions: ['.js', '.ts', '.jsx', '.tsx', '.css', '.json'],
-    // plugins: [new TsconfigPathsPlugin({ configFile: '../chaant-core/tsconfig.json' })],
+    // plugins: plugins
   },
 };

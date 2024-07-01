@@ -1,10 +1,10 @@
-import { IChessAgent } from "@agents/IChessAgent";
-import { AgentState } from "@components/AgentState";
-import { ComputerConfigState } from "@components/ComputerConfigState";
-import { PlayState } from "@components/PlayState";
-import { Square } from "@components/Square";
-import { IComputerOption } from "@components/computers/IComputerOption";
-import { PieceNotation, ResolveType, notationMoveRegex} from "@misc/Util";
+import { IChessAgent } from "@chaant/core/src/agents/IChessAgent";
+import { AgentState } from "@chaant/core/src/components/AgentState";
+import { ComputerConfigState } from "@chaant/core/src/components/ComputerConfigState";
+import { PlayState } from "@chaant/core/src/components/PlayState";
+import { Square } from "@chaant/core/src/components/Square";
+import { IComputerOption } from "@chaant/core/src/components/computers/IComputerOption";
+import { PieceNotation, ResolveType, notationMoveRegex} from "@chaant/core/src/misc/Util";
 import { Browser, ElementHandle, Page } from "puppeteer";
 
 declare global {

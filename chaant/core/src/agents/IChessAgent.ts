@@ -1,8 +1,8 @@
-import { AgentState } from "@components/AgentState";
-import { PlayState } from "@components/PlayState";
-import { Square } from "@components/Square";
-import { IComputerOption } from "@components/computers/IComputerOption";
-import { PieceNotation } from "@misc/Util";
+import { AgentState } from "@chaant/core/src/components/AgentState";
+import { PlayState } from "@chaant/core/src/components/PlayState";
+import { Square } from "@chaant/core/src/components/Square";
+import { IComputerOption } from "@chaant/core/src/components/computers/IComputerOption";
+import { PieceNotation } from "@chaant/core/src/misc/Util";
 
 export interface IChessAgent {
     move(moveNotation: string): Promise<AgentState>;
